@@ -27,6 +27,10 @@ Then("I should see login failed message", async function () {
   await this.loginPage.expectInvalidLoginMessageVisible();
 });
 
+Then("I able to logout", async function () {
+  await this.dashboardPage.elements.logoutButton().click();
+});
+
 Then("I should see {string}", async function (result) {
   if (result === "dashboard") {
     await this.dashboardPage.expectDashboardVisible();
