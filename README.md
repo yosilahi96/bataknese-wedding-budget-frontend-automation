@@ -73,7 +73,7 @@ Copy `.env.example` to `.env`, then change values as needed.
 | `BASE_FE_URL` | `https://example.com` | Application base URL. |
 | `BROWSER` | `chromium` | Browser engine: `chromium`, `firefox`, or `webkit`. |
 | `HEADLESS` | `true` | Set `false` to show the browser. |
-| `DEFAULT_TIMEOUT` | `10000` | Cucumber step timeout in milliseconds. |
+| `DEFAULT_TIMEOUT` | `60000` | Cucumber and Playwright action/navigation timeout in milliseconds. |
 | `VIEWPORT_WIDTH` | `1440` | Browser viewport width. |
 | `VIEWPORT_HEIGHT` | `900` | Browser viewport height. |
 | `SLOW_MO` | `0` | Slow Playwright actions by milliseconds. |

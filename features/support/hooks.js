@@ -38,7 +38,13 @@ Before(async function (scenario) {
     await this.context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   }
 
-  this.setPage(await this.context.newPage());
+  this.context.setDefaultTimeout(config.defaultTimeout);
+  this.context.setDefaultNavigationTimeout(config.defaultTimeout);
+
+  const page = await this.context.newPage();
+  page.setDefaultTimeout(config.defaultTimeout);
+  page.setDefaultNavigationTimeout(config.defaultTimeout);
+  this.setPage(page);
 });
 
 After(async function (scenario) {

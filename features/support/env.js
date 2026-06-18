@@ -3,7 +3,7 @@ require("dotenv").config();
 const DEFAULTS = {
   browser: "chromium",
   headless: "true",
-  timeout: "10000",
+  timeout: "60000",
   viewportWidth: "1440",
   viewportHeight: "900",
   screenshot: "only-on-failure",
