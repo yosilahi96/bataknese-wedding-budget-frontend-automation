@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  repository_dispatch:
+    types:
+      - application-merged
   workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"
