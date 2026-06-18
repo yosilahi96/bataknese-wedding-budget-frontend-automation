@@ -1,0 +1,27 @@
+{
+  "name": "fe-automation",
+  "version": "1.0.0",
+  "description": "Frontend automation base using Playwright and Cucumber Gherkin.",
+  "main": "index.js",
+  "scripts": {
+    "test": "cucumber-js",
+    "test:ui": "cucumber-js --profile ui",
+    "test:headed": "cross-env HEADLESS=false cucumber-js --profile ui",
+    "test:debug": "cross-env HEADLESS=false PWDEBUG=1 cucumber-js --profile ui",
+    "install:browsers": "playwright install"
+  },
+  "keywords": [
+    "automation",
+    "cucumber",
+    "gherkin",
+    "playwright"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@cucumber/cucumber": "^10.9.0",
+    "@playwright/test": "^1.45.3",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5"
+  }
+}
