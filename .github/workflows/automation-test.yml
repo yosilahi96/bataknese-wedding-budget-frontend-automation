@@ -25,4 +25,8 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run automation test
+        env:
+          BASE_FE_URL: ${{ vars.BASE_FE_URL || 'https://bataknese-wedding-budget.vercel.app' }}
+          DEFAULT_TIMEOUT: 60000
+          HEADLESS: true
         run: npm test
