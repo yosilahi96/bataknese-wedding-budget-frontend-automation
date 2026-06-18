@@ -1,4 +1,4 @@
-name: Automation Test
+name: FE Automation
 
 on:
   pull_request:
