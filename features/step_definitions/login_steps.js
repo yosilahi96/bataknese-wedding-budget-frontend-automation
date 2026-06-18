@@ -19,6 +19,14 @@ When("I login using {string}", async function (credentialsFile) {
   await this.loginPage.login(user.email, user.password);
 });
 
+Given("I am logged in using {string}", async function (credentialsFile) {
+  const user = getUser("validUser", credentialsFile);
+
+  await this.loginPage.open(this.frontendUrl("/login"));
+  await this.loginPage.login(user.email, user.password);
+  await this.dashboardPage.expectDashboardVisible();
+});
+
 Then("I should see the dashboard", async function () {
   await this.dashboardPage.expectDashboardVisible();
 });
