@@ -1,6 +1,11 @@
 name: Automation Test
 
 on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
   push:
     branches:
       - main
@@ -12,7 +17,7 @@ on:
     - cron: "0 2 * * *"
 
 jobs:
-  test:
+  automation-fe:
     runs-on: ubuntu-latest
 
     steps:

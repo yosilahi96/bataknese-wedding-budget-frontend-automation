@@ -8,7 +8,8 @@ class DashboardPage extends BasePage {
     this.elements = {
       appName: () => this.page.getByText("BatakWedding", { exact: false }).first(),
       vendorsNavigation: () => this.page.getByText("Vendors", { exact: true }),
-      logoutButton: () => this.page.getByRole("button", { name: "Logout" })
+      logoutButton: () => this.page.getByRole("button", { name: "Logout" }),
+      vendorlistLink: () => this.page.locator('a[href="/vendors"]')
     };
   }
 
@@ -17,6 +18,10 @@ class DashboardPage extends BasePage {
     await expect(this.elements.appName()).toBeVisible();
     await expect(this.elements.vendorsNavigation()).toBeVisible();
     await expect(this.elements.logoutButton()).toBeVisible();
+  }
+
+  async expectvendorlistLinkVisible() {
+    await expect(this.elements.vendorlistLink()).toBeVisible();
   }
 }
 
