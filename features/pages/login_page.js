@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const BasePage = require("./base_page");
 
 class LoginPage extends BasePage {
@@ -7,7 +8,8 @@ class LoginPage extends BasePage {
     this.elements = {
       emailInput: () => this.page.getByPlaceholder("your@email.com"),
       passwordInput: () => this.page.getByPlaceholder("Enter your secure password"),
-      signInButton: () => this.page.getByRole("button", { name: "Sign In to Dashboard" })
+      signInButton: () => this.page.getByRole("button", { name: "Sign In to Dashboard" }),
+      invalidLoginMessage: () => this.page.getByText("Invalid email or password", { exact: true })
     };
   }
 
@@ -18,10 +20,12 @@ class LoginPage extends BasePage {
   async login(email, password) {
     await this.elements.emailInput().fill(email);
     await this.elements.passwordInput().fill(password);
-    await Promise.all([
-      this.page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 10000 }).catch(() => undefined),
-      this.elements.signInButton().click()
-    ]);
+    await this.elements.signInButton().click();
+  }
+
+  async expectInvalidLoginMessageVisible() {
+    await expect(this.page).toHaveURL(/\/login/i);
+    await expect(this.elements.invalidLoginMessage()).toBeVisible();
   }
 }
 

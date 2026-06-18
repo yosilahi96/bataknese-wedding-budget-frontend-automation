@@ -13,7 +13,7 @@ class DashboardPage extends BasePage {
   }
 
   async expectDashboardVisible() {
-    await expect(this.page).not.toHaveURL(/\/login/i);
+    await expect(this.page).not.toHaveURL(/\/login/i, { timeout: 10000 });
     await expect(this.elements.appName()).toBeVisible();
     await expect(this.elements.vendorsNavigation()).toBeVisible();
     await expect(this.elements.logoutButton()).toBeVisible();
