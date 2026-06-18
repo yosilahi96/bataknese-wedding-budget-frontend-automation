@@ -59,6 +59,8 @@ npm run test:debug
 - `features/support/artifacts.js`: report artifact helpers.
 - `features/pages/base_page.js`: reusable page actions/assertions.
 - `features/pages/*_page.js`: Page Object Model classes and element locators.
+- `config/credentials.json`: local login credentials used by credential-based steps.
+- `config/credentials.example.json`: example credential file shape.
 - `reports/`: generated Cucumber HTML and JSON reports.
 - `test-results/`: screenshots, traces, and videos.
 
@@ -93,6 +95,31 @@ Scenario: Open the home page
 ```
 
 Use `BASE_FE_URL` in `.env` to point scenarios at your application.
+
+## Login Credentials
+
+Copy the example credential file:
+
+```powershell
+Copy-Item config/credentials.example.json config/credentials.json
+```
+
+Then update `config/credentials.json`:
+
+```json
+{
+  "validUser": {
+    "email": "yosilahi10@gmail.com",
+    "password": "yosua123"
+  }
+}
+```
+
+Use it in Gherkin:
+
+```gherkin
+When I login with "validUser" credentials
+```
 
 ## Page Object Model
 
