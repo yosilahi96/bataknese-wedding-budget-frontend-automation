@@ -1,20 +1,9 @@
 name: FE Automation
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
   push:
     branches:
-      - main
-  repository_dispatch:
-    types:
-      - application-merged
-  workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * *"
+      - master
 
 jobs:
   automation-fe:
