@@ -6,10 +6,10 @@ class LoginPage extends BasePage {
     super(page);
 
     this.elements = {
-      emailInput: () => this.page.getByPlaceholder("your@email.com"),
-      passwordInput: () => this.page.getByPlaceholder("Enter your secure password"),
-      signInButton: () => this.page.getByRole("button", { name: "Sign In to Dashboard" }),
-      invalidLoginMessage: () => this.page.getByText("Invalid email or password", { exact: true })
+      emailInput: () => this.page.locator('input[type="email"]'),
+      passwordInput: () => this.page.locator('input[type="password"]'),
+      signInButton: () => this.page.locator('button[type="submit"].login-submit'),
+      invalidLoginMessage: () => this.page.locator('div.login-error-banner', { exact: true })
     };
   }
 

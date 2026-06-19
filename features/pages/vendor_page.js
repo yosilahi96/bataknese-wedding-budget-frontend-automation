@@ -6,7 +6,7 @@ class VendorPage extends BasePage {
     super(page);
 
     this.elements = {
-      detailsvendorButton: () => this.page.getByText("View Details", { exact: true }).first(),
+      detailsvendorButton: () => this.page.locator('button.btn.btn-outline.btn-sm', { exact: true }).first(),
       closevendordetailsButton: () => this.page.getByText("Close")
     };
   }
