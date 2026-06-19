@@ -35,17 +35,7 @@ pipeline {
 
         stage('Run UI tests') {
             steps {
-                withCredentials([
-                    file(
-                        credentialsId: 'fe-valid-login-json',
-                        variable: 'VALID_CREDENTIALS'
-                    )
-                ]) {
-                    sh '''
-                        cp "$VALID_CREDENTIALS" config/credentials_login_valid.json
-                        npm run test:ui
-                    '''
-                }
+                sh 'npm run test:ui'
             }
         }
     }
@@ -65,8 +55,6 @@ pipeline {
                 alwaysLinkToLastBuild: true,
                 allowMissing: true
             ])
-
-            sh 'rm -f config/credentials_login_valid.json'
         }
     }
 }
