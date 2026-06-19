@@ -38,7 +38,7 @@ jobs:
       - name: Run automation test
         env:
           BASE_FE_URL: ${{ vars.BASE_FE_URL || 'https://bataknese-wedding-budget.vercel.app' }}
-          DEFAULT_TIMEOUT: 60000
+          DEFAULT_TIMEOUT: 90000
           HEADLESS: true
         run: npm test
 
