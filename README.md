@@ -86,8 +86,8 @@ Instead of hardcoded login credentials or single-use environment variables, cred
    ```json
    {
      "validUser": {
-       "email": "yosilahi10@gmail.com",
-       "password": "yosua123"
+       "email": "xxxx@gmail.com",
+       "password": "xxx"
      }
    }
    ```
