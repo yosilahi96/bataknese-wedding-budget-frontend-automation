@@ -87,7 +87,7 @@ Instead of hardcoded login credentials or single-use environment variables, cred
    {
      "validUser": {
        "email": "yosilahi10@gmail.com",
-       "password": "yosua123"
+       "password": "yosua1234"
      }
    }
    ```
