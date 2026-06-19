@@ -1,132 +1,110 @@
-# Frontend Automation Base
+# Bataknese Wedding Budget - Frontend Automation
 
-Playwright + Cucumber automation scaffold for frontend tests written in Gherkin.
+Playwright + Cucumber automation scaffold for testing the Bataknese Wedding Budget frontend.
 
 ## Setup
 
 1. Install Node.js.
 2. Install dependencies:
-
    ```powershell
    npm install
    ```
-
 3. Install Playwright browsers:
-
    ```powershell
    npm run install:browsers
    ```
-
 4. Create your local environment file:
-
    ```powershell
    Copy-Item .env.example .env
    ```
-
 5. Run all scenarios:
-
    ```powershell
    npm test
    ```
 
-Run only UI tagged scenarios:
+### Execution Helpers (Scripts)
+Alternatively, you can run the test suite using the included Batch files:
+- `run_all.bat`: Runs all scenarios (`npm test`).
+- `run_ui.bat`: Runs only `@ui` tagged scenarios (`npm run test:ui`).
+- `run_headed.bat`: Runs tests with the browser visible (`npm run test:headed`).
+- `run_debug.bat`: Runs tests in Playwright debug mode (`npm run test:debug`).
 
-```powershell
-npm run test:ui
-```
+## Directory Structure
 
-Run with the browser visible:
+- `features/ui/`: Gherkin UI feature files.
+  - `login.feature`: Scenarios testing the login flow with valid/invalid credentials.
+  - `logout.feature`: Scenario for user logout.
+  - `vendor.feature`: Scenarios for viewing vendor list and details.
+- `features/step_definitions/`: Cucumber step implementations.
+  - `home_steps.js`: Step definitions related to the landing page.
+  - `login_steps.js`: Step definitions for login, logout, and dashboard verification.
+  - `ui_steps.js`: Generic/reusable step definitions (visiting pages, clicking, filling forms, assertions).
+  - `vendor_steps.js`: Step definitions for navigating and viewing vendors.
+- `features/pages/`: Page Object Model (POM) classes.
+  - `base_page.js`: Common utility actions and assertions (e.g., clicks, fills, checks, waits).
+  - `home_page.js`: Selectors and methods for the Home page.
+  - `login_page.js`: Selectors and methods for the Login page.
+  - `dashboard_page.js`: Selectors and methods for the Dashboard page.
+  - `vendor_page.js`: Selectors and methods for the Vendor list/details page.
+- `features/support/`: Environment bootstrap and lifecycle configuration.
+  - `env.js`: Reads environment variables from `.env` with fallback values.
+  - `world.js`: Cucumber world constructor, instantiating the browser page and POMs.
+  - `hooks.js`: `Before` and `After` hooks setting up Playwright contexts, tracing, and cleanup.
+  - `artifacts.js`: Utility functions for managing test artifacts (screenshots, traces, videos).
+  - `credentials.js`: Utility for loading JSON credentials dynamically.
+- `config/`: JSON configuration files.
+  - `credentials.example.json`: Schema example for user credentials.
+  - `credentials_login_valid.json`: Valid user login credentials.
+  - `credentials_login_invalid.json`: Invalid/incorrect credentials for testing failure scenarios.
+- `reports/`: HTML and JSON Cucumber reports generated after a run.
+- `test-results/`: Output folder for failure screenshots, videos, and trace files.
+- `cucumber.js`: Cucumber configuration profiles.
 
-```powershell
-npm run test:headed
-```
+## Environment Configuration
 
-Run with Playwright debug mode:
-
-```powershell
-npm run test:debug
-```
-
-## Structure
-
-- `features/ui/*.feature`: Gherkin UI scenarios.
-- `features/step_definitions/*_steps.js`: Cucumber step implementations.
-- `features/step_definitions/home_steps.js`: sample page-specific steps that call the Home POM.
-- `features/step_definitions/login_steps.js`: sample login flow steps using Login and Dashboard POMs.
-- `features/support/env.js`: environment bootstrapping.
-- `features/support/world.js`: shared Playwright browser/page state.
-- `features/support/hooks.js`: browser lifecycle and failure screenshots.
-- `features/support/artifacts.js`: report artifact helpers.
-- `features/pages/base_page.js`: reusable page actions/assertions.
-- `features/pages/*_page.js`: Page Object Model classes and element locators.
-- `config/credentials.json`: local login credentials used by credential-based steps.
-- `config/credentials.example.json`: example credential file shape.
-- `reports/`: generated Cucumber HTML and JSON reports.
-- `test-results/`: screenshots, traces, and videos.
-
-## Environment
-
-Copy `.env.example` to `.env`, then change values as needed.
+Copy `.env.example` to `.env` and configure the variables:
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `BASE_FE_URL` | `https://example.com` | Application base URL. |
 | `BROWSER` | `chromium` | Browser engine: `chromium`, `firefox`, or `webkit`. |
 | `HEADLESS` | `true` | Set `false` to show the browser. |
-| `DEFAULT_TIMEOUT` | `60000` | Cucumber and Playwright action/navigation timeout in milliseconds. |
+| `DEFAULT_TIMEOUT` | `60000` | Playwright action/navigation timeout in milliseconds. |
 | `VIEWPORT_WIDTH` | `1440` | Browser viewport width. |
 | `VIEWPORT_HEIGHT` | `900` | Browser viewport height. |
 | `SLOW_MO` | `0` | Slow Playwright actions by milliseconds. |
-| `IGNORE_HTTPS_ERRORS` | `false` | Allow invalid local/test certificates. |
-| `SCREENSHOT` | `only-on-failure` | Use `on`, `off`, or `only-on-failure`. |
-| `VIDEO` | `off` | Use `on`, `off`, or `retain-on-failure`. |
-| `TRACE` | `retain-on-failure` | Use `on`, `off`, or `retain-on-failure`. |
-
-## Adding A New UI Scenario
-
-Create or update a `.feature` file:
-
-```gherkin
-@ui
-Scenario: Open the home page
-  Given I open the frontend home page
-  Then the page title should contain "Example"
-  And the page should contain "Example Domain"
-```
-
-Use `BASE_FE_URL` in `.env` to point scenarios at your application.
+| `IGNORE_HTTPS_ERRORS` | `false` | Ignore invalid local/test SSL certificates. |
+| `SCREENSHOT` | `only-on-failure` | Capture screenshots: `on`, `off`, `only-on-failure`. |
+| `VIDEO` | `off` | Record browser video: `on`, `off`, `retain-on-failure`. |
+| `TRACE` | `retain-on-failure` | Record Playwright traces: `on`, `off`, `retain-on-failure`. |
 
 ## Login Credentials
 
-Copy the example credential file:
+Instead of hardcoded login credentials or single-use environment variables, credentials can be loaded dynamically from JSON files inside the `config/` directory:
 
-```powershell
-Copy-Item config/credentials.example.json config/credentials.json
-```
+1. Under `config/`, you have files like `credentials_login_valid.json`:
+   ```json
+   {
+     "validUser": {
+       "email": "yosilahi10@gmail.com",
+       "password": "yosua123"
+     }
+   }
+   ```
+2. In Gherkin features, you can pass the file name directly:
+   ```gherkin
+   When I login using "credentials_login_valid.json"
+   ```
+   Or require a pre-authenticated session:
+   ```gherkin
+   Given I am logged in using "credentials_login_valid.json"
+   ```
 
-Then update `config/credentials.json`:
+## Page Object Model (POM)
 
-```json
-{
-  "validUser": {
-    "email": "yosilahi10@gmail.com",
-    "password": "yosua123"
-  }
-}
-```
-
-Use it in Gherkin:
-
-```gherkin
-When I login with "validUser" credentials
-```
-
-## Page Object Model
-
-Each page should have its own file in `features/pages/`. Store page elements in the `elements` object, then expose page actions and assertions as methods.
+Page Object Models inherit from `BasePage` (defined in `features/pages/base_page.js`). Place element locators in the `this.elements` object as functions returning Playwright locators, and write semantic actions/assertions as methods.
 
 Example:
-
 ```javascript
 const { expect } = require("@playwright/test");
 const BasePage = require("./base_page");
@@ -136,60 +114,78 @@ class LoginPage extends BasePage {
     super(page);
 
     this.elements = {
-      emailInput: () => this.page.getByLabel("Email"),
-      passwordInput: () => this.page.getByLabel("Password"),
-      loginButton: () => this.page.getByRole("button", { name: "Login" }),
-      errorMessage: () => this.page.getByText("Invalid email or password")
+      emailInput: () => this.page.getByPlaceholder("your@email.com"),
+      passwordInput: () => this.page.getByPlaceholder("Enter your secure password"),
+      signInButton: () => this.page.getByRole("button", { name: "Sign In to Dashboard" }),
+      invalidLoginMessage: () => this.page.getByText("Invalid email or password", { exact: true })
     };
+  }
+
+  async open(url) {
+    await this.goto(url);
   }
 
   async login(email, password) {
     await this.elements.emailInput().fill(email);
     await this.elements.passwordInput().fill(password);
-    await this.elements.loginButton().click();
+    await this.elements.signInButton().click();
   }
 
-  async expectLoginErrorVisible() {
-    await expect(this.elements.errorMessage()).toBeVisible();
+  async expectInvalidLoginMessageVisible() {
+    await expect(this.page).toHaveURL(/\/login/i);
+    await expect(this.elements.invalidLoginMessage()).toBeVisible();
   }
 }
 
 module.exports = LoginPage;
 ```
 
-Register the page in `features/support/world.js`:
-
+These POMs are registered and associated with the Cucumber context in `features/support/world.js`:
 ```javascript
-const LoginPage = require("../pages/login_page");
-
-this.loginPage = new LoginPage(page);
-this.pages.login = this.loginPage;
+setPage(page) {
+  this.page = page;
+  this.basePage = new BasePage(page);
+  this.homePage = new HomePage(page);
+  this.loginPage = new LoginPage(page);
+  this.dashboardPage = new DashboardPage(page);
+  this.vendorPage = new VendorPage(page);
+  // ...
+}
 ```
 
-Then call page methods from step definitions:
+## Available Gherkin Steps
 
-```javascript
-When("I login with email {string} and password {string}", async function (email, password) {
-  await this.loginPage.login(email, password);
-});
-```
+### Reusable UI Navigation & Form Steps (`features/step_definitions/ui_steps.js`)
+- `Given I open the frontend home page`
+- `When I visit {string}` (resolves paths relative to `BASE_FE_URL` unless starting with `http`)
+- `When I click the {string} button` (locates by role `button`)
+- `When I click the {string} link` (locates by role `link`)
+- `When I click text {string}`
+- `When I fill {string} with {string}` (locates input by label)
+- `When I select {string} from {string}` (locates dropdown by label)
+- `When I check {string}` (locates checkbox by label)
+- `When I wait for the page to finish loading`
+- `Then the page title should contain {string}`
+- `Then the page url should contain {string}`
+- `Then the page should contain {string}`
+- `Then the page should not contain {string}`
 
-## Common Gherkin Steps
+### Login/Logout Steps (`features/step_definitions/login_steps.js`)
+- `Given I open the Bataknese wedding login page`
+- `When I login with email {string} and password {string}`
+- `When I login with {string} credentials` (loads user key from default `credentials.json`)
+- `When I login using {string}` (loads `validUser` from the specified JSON file in `config/`)
+- `Given I am logged in using {string}` (performs login using specific credentials file and asserts dashboard visibility)
+- `Then I should see the dashboard`
+- `Then I should see login failed message`
+- `Then I able to logout`
+- `Then I should see {string}` (asserts `"dashboard"` or `"login failed message"`)
 
-```gherkin
-Given I open the frontend home page
-When I visit "/login"
-When I click the "Submit" button
-When I click the "Forgot password" link
-When I click text "Profile"
-When I fill "Email" with "user@example.com"
-When I select "Indonesia" from "Country"
-When I check "Remember me"
-When I wait for the page to finish loading
-Then the page title should contain "Dashboard"
-Then the page url should contain "/dashboard"
-Then the page should contain "Welcome"
-Then the page should not contain "Invalid password"
-```
+### Home Page Steps (`features/step_definitions/home_steps.js`)
+- `Then the home page title should contain {string}`
+- `Then the home page should show {string}`
 
-For application-specific flows, create a page object in `features/pages/` and thin steps in `features/step_definitions/`.
+### Vendor Page Steps (`features/step_definitions/vendor_steps.js`)
+- `When I able to access vendor page`
+- `Then I should see list of vendor`
+- `Then I should see vendor details`
