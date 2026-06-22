@@ -1,7 +1,7 @@
 const { Given, When, Then } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 
-When("I see edit project inforation", async function () {
+When("I see edit project information", async function () {
   await this.projectPage.expecteditProjectButtonVisible();
   await this.projectPage.elements.editProjectButton().click();
 });
