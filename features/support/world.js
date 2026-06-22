@@ -5,6 +5,7 @@ const HomePage = require("../pages/home_page");
 const LoginPage = require("../pages/login_page");
 const DashboardPage = require("../pages/dashboard_page");
 const VendorPage = require("../pages/vendor_page");
+const ProjectPage = require("../pages/project_page");
 
 class FrontendWorld {
   constructor({ attach, log }) {
@@ -18,6 +19,7 @@ class FrontendWorld {
     this.loginPage = null;
     this.dashboardPage = null;
     this.vendorPage = null;
+    this.projectPage = null;
     this.pages = {};
     this.artifactsDir = null;
     this.scenarioName = null;
@@ -30,12 +32,14 @@ class FrontendWorld {
     this.loginPage = new LoginPage(page);
     this.dashboardPage = new DashboardPage(page);
     this.vendorPage = new VendorPage(page);
+    this.projectPage = new ProjectPage(page);
     this.pages = {
       base: this.basePage,
       home: this.homePage,
       login: this.loginPage,
       dashboard: this.dashboardPage,
-      vendor: this.vendorPage
+      vendor: this.vendorPage,
+      project: this.projectPage
     };
   }
 

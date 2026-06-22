@@ -27,6 +27,16 @@ Given("I am logged in using {string}", async function (credentialsFile) {
   await this.dashboardPage.expectDashboardVisible();
 });
 
+Given("I am on project overview using {string}", async function (credentialsFile) {
+  const user = getUser("validUser", credentialsFile);
+
+  await this.loginPage.open(this.frontendUrl("/login"));
+  await this.loginPage.login(user.email, user.password);
+  await this.dashboardPage.expectDashboardVisible();
+  await this.dashboardPage.expectprojectNavigationVisible();
+  await this.dashboardPage.elements.projectNavigation().click();
+});
+
 Then("I should see the dashboard", async function () {
   await this.dashboardPage.expectDashboardVisible();
 });

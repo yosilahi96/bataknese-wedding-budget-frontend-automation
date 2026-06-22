@@ -9,7 +9,8 @@ class DashboardPage extends BasePage {
       appName: () => this.page.getByText("BatakWedding", { exact: false }).first(),
       vendorsNavigation: () => this.page.getByText("Vendors", { exact: true }),
       logoutButton: () => this.page.getByRole("button", { name: "Logout" }),
-      vendorlistLink: () => this.page.locator('a[href="/vendors"]')
+      vendorlistLink: () => this.page.locator('a[href="/vendors"]'),
+      projectNavigation: () => this.page.locator('.card.card-hover'),
     };
   }
 
@@ -23,6 +24,11 @@ class DashboardPage extends BasePage {
   async expectvendorlistLinkVisible() {
     await expect(this.elements.vendorlistLink()).toBeVisible();
   }
+
+  async expectprojectNavigationVisible() {
+    await expect(this.elements.projectNavigation()).toBeVisible();
+  }
+
 }
 
 module.exports = DashboardPage;
