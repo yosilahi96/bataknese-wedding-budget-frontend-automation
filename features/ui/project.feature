@@ -1,5 +1,5 @@
 @ui @project
-Feature: vendor
+Feature: Project
   Background:
     Given I am on project overview using "credentials_login_valid.json"
   
