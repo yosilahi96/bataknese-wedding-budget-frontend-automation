@@ -33,8 +33,7 @@ Given("I am on project overview using {string}", async function (credentialsFile
   await this.loginPage.open(this.frontendUrl("/login"));
   await this.loginPage.login(user.email, user.password);
   await this.dashboardPage.expectDashboardVisible();
-  await this.dashboardPage.expectprojectNavigationVisible();
-  await this.dashboardPage.elements.projectNavigation().click();
+  await this.projectPage.openInProgressProject();
 });
 
 Then("I should see the dashboard", async function () {
