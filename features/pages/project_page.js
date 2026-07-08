@@ -69,6 +69,7 @@ class ProjectPage extends BasePage {
 
   async openInProgressProject() {
     if (await this.elements.inProgressProjectCard().isVisible().catch(() => false)) {
+      await expect(this.elements.inProgressProjectCard()).toBeVisible();
       await this.elements.inProgressProjectCard().click();
       return;
     }
@@ -88,27 +89,51 @@ class ProjectPage extends BasePage {
     const weddingDate = new Date();
     weddingDate.setDate(weddingDate.getDate() + 30);
 
+    await expect(this.elements.newProjectButton()).toBeVisible();
     await this.elements.newProjectButton().click();
-    await this.page.locator('input[type="text"]').nth(0).fill(`Yosu${timestamp}`);
-    await this.page.locator('input[type="text"]').nth(1).fill(`Gaby${timestamp}`);
-    await this.page.locator("select").nth(1).selectOption({ label: "Jakarta Pusat" });
-    await this.page.locator('input[type="text"]').nth(2).fill("Jakarta Timur");
-    await this.page.locator('input[type="date"]').fill(weddingDate.toISOString().slice(0, 10));
-    await this.page.locator('input[type="text"]').nth(3).fill("100000000");
-    await this.page.locator('input[type="number"]').fill("100");
-    await this.page.locator('input[name="eventType"][value="PESTA_ADAT"]').check();
+    const groomNameInput = this.page.locator('input[type="text"]').nth(0);
+    const brideNameInput = this.page.locator('input[type="text"]').nth(1);
+    const citySelect = this.page.locator("select").nth(1);
+    const addressInput = this.page.locator('input[type="text"]').nth(2);
+    const weddingDateInput = this.page.locator('input[type="date"]');
+    const budgetInput = this.page.locator('input[type="text"]').nth(3);
+    const guestInput = this.page.locator('input[type="number"]');
+    const eventTypeInput = this.page.locator('input[name="eventType"][value="PESTA_ADAT"]');
+
+    await expect(groomNameInput).toBeVisible();
+    await groomNameInput.fill(`Yosu${timestamp}`);
+    await expect(brideNameInput).toBeVisible();
+    await brideNameInput.fill(`Gaby${timestamp}`);
+    await expect(citySelect).toBeVisible();
+    await citySelect.selectOption({ label: "Jakarta Pusat" });
+    await expect(addressInput).toBeVisible();
+    await addressInput.fill("Jakarta Timur");
+    await expect(weddingDateInput).toBeVisible();
+    await weddingDateInput.fill(weddingDate.toISOString().slice(0, 10));
+    await expect(budgetInput).toBeVisible();
+    await budgetInput.fill("100000000");
+    await expect(guestInput).toBeVisible();
+    await guestInput.fill("100");
+    await expect(eventTypeInput).toBeVisible();
+    await eventTypeInput.check();
+    await expect(this.elements.createProjectButton()).toBeVisible();
     await this.elements.createProjectButton().click();
     await this.page.waitForLoadState("domcontentloaded");
     await this.page.waitForLoadState("networkidle").catch(() => undefined);
   }
 
   async addRequiredCategory(categoryName, plannedBudget = "1000000") {
+    await expect(this.elements.addCategoryButton()).toBeVisible();
     await this.elements.addCategoryButton().click();
     await expect(this.elements.categoryModal()).toBeVisible();
+    await expect(this.elements.categoryNameInput()).toBeVisible();
     await this.elements.categoryNameInput().fill(categoryName);
+    await expect(this.elements.categoryPlannedBudgetInput()).toBeVisible();
     await this.elements.categoryPlannedBudgetInput().fill(plannedBudget);
+    await expect(this.elements.saveCategoryButton()).toBeVisible();
     await this.elements.saveCategoryButton().click();
     await expect(this.elements.categorySuccessModal()).toBeVisible();
+    await expect(this.elements.categorySuccessOkButton()).toBeVisible();
     await this.elements.categorySuccessOkButton().click();
     await expect(this.elements.categorySuccessModal()).toBeHidden();
   }

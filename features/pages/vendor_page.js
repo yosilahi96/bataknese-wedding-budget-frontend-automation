@@ -45,6 +45,7 @@ class VendorPage extends BasePage {
   }
 
   async selectVendorType(value) {
+    await expect(this.elements.alltypesDropdown()).toBeVisible();
     await this.elements.alltypesDropdown().selectOption(value);
   }
 }

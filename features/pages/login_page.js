@@ -18,8 +18,11 @@ class LoginPage extends BasePage {
   }
 
   async login(email, password) {
+    await expect(this.elements.emailInput()).toBeVisible();
     await this.elements.emailInput().fill(email);
+    await expect(this.elements.passwordInput()).toBeVisible();
     await this.elements.passwordInput().fill(password);
+    await expect(this.elements.signInButton()).toBeVisible();
     await this.elements.signInButton().click();
   }
 

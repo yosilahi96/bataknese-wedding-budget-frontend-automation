@@ -18,23 +18,33 @@ class BasePage {
   }
 
   async clickByRole(role, name) {
-    await this.page.getByRole(role, { name }).click();
+    const element = this.page.getByRole(role, { name });
+    await expect(element).toBeVisible();
+    await element.click();
   }
 
   async clickByText(text) {
-    await this.page.getByText(text, { exact: true }).click();
+    const element = this.page.getByText(text, { exact: true });
+    await expect(element).toBeVisible();
+    await element.click();
   }
 
   async fillByLabel(label, value) {
-    await this.page.getByLabel(label).fill(value);
+    const element = this.page.getByLabel(label);
+    await expect(element).toBeVisible();
+    await element.fill(value);
   }
 
   async selectByLabel(label, value) {
-    await this.page.getByLabel(label).selectOption(value);
+    const element = this.page.getByLabel(label);
+    await expect(element).toBeVisible();
+    await element.selectOption(value);
   }
 
   async checkByLabel(label) {
-    await this.page.getByLabel(label).check();
+    const element = this.page.getByLabel(label);
+    await expect(element).toBeVisible();
+    await element.check();
   }
 
   async expectUrlContains(text) {

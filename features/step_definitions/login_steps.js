@@ -45,6 +45,7 @@ Then("I should see login failed message", async function () {
 });
 
 Then("I able to logout", async function () {
+  await this.dashboardPage.expectDashboardVisible();
   await this.dashboardPage.elements.logoutButton().click();
 });
 

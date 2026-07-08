@@ -8,16 +8,21 @@ When("I see edit project information", async function () {
 
 Then("I edit the project information", async function () {
   await this.projectPage.saveEditProjectButtonVisible();
+  await this.projectPage.editGroomNameProjectVisible();
   await this.projectPage.elements.editGroomNameProject().click();
   await this.projectPage.elements.editGroomNameProject().clear();
   this.groomName = `Yosu${Date.now()}`;
+  await this.projectPage.editGroomNameProjectVisible();
   await this.projectPage.elements.editGroomNameProject().fill(this.groomName);
+  await this.projectPage.saveEditProjectButtonVisible();
   await this.projectPage.elements.saveEditProjectButton().click();
 });
 
 Then("I verify the project information changes", async function(){
-  await this.projectPage.page.getByText('Project Updated');
+  await expect(this.projectPage.page.getByText('Project Updated')).toBeVisible();
+  await expect(this.projectPage.elements.confirmEditProjectButton()).toBeVisible();
   await this.projectPage.elements.confirmEditProjectButton().click();
+  await this.projectPage.textGroomandBrideLabelVisible();
   await expect(this.projectPage.elements.textGroomandBrideLabel()).toContainText(this.groomName);
 });
 
