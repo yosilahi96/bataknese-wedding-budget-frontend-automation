@@ -13,6 +13,30 @@ class ProjectPage extends BasePage {
       confirmEditProjectButton: () => this.page.locator('.modal .modal-actions button.btn.btn-primary'),
       newProjectButton: () => this.page.getByRole("button", { name: /New Project/i }),
       createProjectButton: () => this.page.getByRole("button", { name: "Create Project" }),
+      categoryTableCard: () => this.page.locator(".card.table-card").filter({
+        has: this.page.locator(".table-card-header .section-title", { hasText: "Pesta Adat - Categories" })
+      }),
+      addCategoryButton: () => this.elements.categoryTableCard().locator(".table-card-header button.btn.btn-primary"),
+      categoryModal: () => this.page.locator(".modal").filter({
+        has: this.page.locator("h3", { hasText: "Add Category" })
+      }),
+      categoryNameInput: () => this.elements.categoryModal().locator('input[required][placeholder="Search or type category name..."]'),
+      categoryPlannedBudgetInput: () => this.elements.categoryModal().locator('input[placeholder="e.g. 50.000.000"]'),
+      saveCategoryButton: () => this.elements.categoryModal().locator('button[type="submit"].btn.btn-primary'),
+      categorySuccessModal: () => this.page.locator(".modal").filter({
+        has: this.page.locator("h3", { hasText: "Category Added" })
+      }),
+      categorySuccessOkButton: () => this.elements.categorySuccessModal().locator("button.btn.btn-primary"),
+      categoryRow: (categoryName) => this.elements.categoryTableCard().locator("tbody tr").filter({
+        has: this.page.locator("td").filter({ hasText: categoryName })
+      }),
+      vendorRecommendationCard: () => this.page.locator(".vendor-layout .card").filter({
+        has: this.page.locator("h3", { hasText: "Vendor Recommendations" })
+      }),
+      vendorRecommendationSearchInput: () => this.elements.vendorRecommendationCard().locator('input[placeholder="Search vendors..."]'),
+      vendorRecommendationResultRow: (vendorName) => this.elements.vendorRecommendationCard().locator("tbody tr").filter({
+        has: this.page.locator("td").filter({ hasText: vendorName })
+      }),
       inProgressProjectCard: () => this.page
         .locator('.card, .card-hover, [class*="card"]')
         .filter({ has: this.page.getByText(/^In Progress$/i) })
@@ -76,6 +100,30 @@ class ProjectPage extends BasePage {
     await this.elements.createProjectButton().click();
     await this.page.waitForLoadState("domcontentloaded");
     await this.page.waitForLoadState("networkidle").catch(() => undefined);
+  }
+
+  async addRequiredCategory(categoryName, plannedBudget = "1000000") {
+    await this.elements.addCategoryButton().click();
+    await expect(this.elements.categoryModal()).toBeVisible();
+    await this.elements.categoryNameInput().fill(categoryName);
+    await this.elements.categoryPlannedBudgetInput().fill(plannedBudget);
+    await this.elements.saveCategoryButton().click();
+    await expect(this.elements.categorySuccessModal()).toBeVisible();
+    await this.elements.categorySuccessOkButton().click();
+    await expect(this.elements.categorySuccessModal()).toBeHidden();
+  }
+
+  async expectCategoryVisible(categoryName) {
+    await expect(this.elements.categoryRow(categoryName)).toBeVisible();
+  }
+
+  async searchVendorRecommendation(vendorName) {
+    await expect(this.elements.vendorRecommendationSearchInput()).toBeVisible();
+    await this.elements.vendorRecommendationSearchInput().fill(vendorName);
+  }
+
+  async expectVendorRecommendationSearchResult(vendorName) {
+    await expect(this.elements.vendorRecommendationResultRow(vendorName)).toBeVisible();
   }
 }
 module.exports = ProjectPage;

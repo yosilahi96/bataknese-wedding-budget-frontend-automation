@@ -5,3 +5,4 @@ reports/
 test-results/
 playwright-report/
 *.log
+mpc-prompt.md

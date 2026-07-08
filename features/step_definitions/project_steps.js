@@ -20,3 +20,21 @@ Then("I verify the project information changes", async function(){
   await this.projectPage.elements.confirmEditProjectButton().click();
   await expect(this.projectPage.elements.textGroomandBrideLabel()).toContainText(this.groomName);
 });
+
+When("I add a category with the required field", async function () {
+  this.categoryName = `Automation Category ${Date.now()}`;
+  await this.projectPage.addRequiredCategory(this.categoryName);
+});
+
+Then("I verify the category was made on the list", async function () {
+  await this.projectPage.expectCategoryVisible(this.categoryName);
+});
+
+When("I search vendor recommendation {string}", async function (vendorName) {
+  this.vendorRecommendationName = vendorName;
+  await this.projectPage.searchVendorRecommendation(vendorName);
+});
+
+Then("I verify the vendor recommendation search result matched", async function () {
+  await this.projectPage.expectVendorRecommendationSearchResult(this.vendorRecommendationName);
+});
