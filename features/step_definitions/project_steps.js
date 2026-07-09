@@ -43,3 +43,75 @@ When("I search vendor recommendation {string}", async function (vendorName) {
 Then("I verify the vendor recommendation search result matched", async function () {
   await this.projectPage.expectVendorRecommendationSearchResult(this.vendorRecommendationName);
 });
+
+When("I filter vendor recommendations by each available area", async function () {
+  await this.projectPage.filterVendorRecommendationsByEveryArea();
+});
+
+Then("I verify each vendor recommendation area filter result matched", async function () {
+  await this.projectPage.expectEveryAreaFilterWasVerified();
+});
+
+When("I filter vendor recommendations by area {string}", async function (area) {
+  await this.projectPage.filterVendorRecommendationsByArea(area);
+});
+
+Then("I verify vendor recommendation area filter result matched for {string}", async function (area) {
+  await this.projectPage.expectVendorRecommendationsFilteredByAreaName(area);
+});
+
+When("I filter vendor recommendations by each available price", async function () {
+  await this.projectPage.filterVendorRecommendationsByEveryPrice();
+});
+
+Then("I verify each vendor recommendation price filter result matched", async function () {
+  await this.projectPage.expectEveryPriceFilterWasVerified();
+});
+
+When("I filter vendor recommendations by price {string}", async function (price) {
+  await this.projectPage.filterVendorRecommendationsByPrice(price);
+});
+
+Then("I verify vendor recommendation price filter result matched for {string}", async function (price) {
+  await this.projectPage.expectVendorRecommendationsFilteredByPriceName(price);
+});
+
+When("I sort vendor recommendations by price {string}", async function (direction) {
+  await this.projectPage.sortVendorRecommendationsByPrice(direction);
+});
+
+Then("I verify vendor recommendations are sorted by price {string}", async function (direction) {
+  await this.projectPage.expectVendorRecommendationsSortedByPrice(direction);
+});
+
+When("I filter vendor recommendations by each available capacity", async function () {
+  await this.projectPage.filterVendorRecommendationsByEveryCapacity();
+});
+
+Then("I verify each vendor recommendation capacity filter result matched", async function () {
+  await this.projectPage.expectEveryCapacityFilterWasVerified();
+});
+
+When("I filter vendor recommendations by capacity {string}", async function (capacity) {
+  await this.projectPage.filterVendorRecommendationsByCapacity(capacity);
+});
+
+Then("I verify vendor recommendation capacity filter result matched for {string}", async function (capacity) {
+  await this.projectPage.expectVendorRecommendationsFilteredByCapacityName(capacity);
+});
+
+When("I select a vendor recommendation", async function () {
+  await this.projectPage.selectFirstAvailableVendorRecommendation();
+});
+
+Then("I verify the vendor has been selected", async function () {
+  await this.projectPage.expectSelectedVendorVisible();
+});
+
+When("I remove the selected vendor", async function () {
+  await this.projectPage.removeSelectedVendor();
+});
+
+Then("I verify the selected vendor has been removed", async function () {
+  await this.projectPage.expectSelectedVendorRemoved();
+});

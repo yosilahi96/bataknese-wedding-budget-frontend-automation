@@ -36,6 +36,23 @@ Given("I am on project overview using {string}", async function (credentialsFile
   await this.projectPage.openInProgressProject();
 });
 
+Given("I am on the project detail page using {string}", async function (credentialsFile) {
+  const user = getUser("validUser", credentialsFile);
+  const projectDetailPath = process.env.PROJECT_DETAIL_PATH;
+
+  await this.loginPage.open(this.frontendUrl("/login"));
+  await this.loginPage.login(user.email, user.password);
+  await this.dashboardPage.expectDashboardVisible();
+
+  if (projectDetailPath) {
+    await this.basePage.goto(this.frontendUrl(projectDetailPath));
+  } else {
+    await this.projectPage.openInProgressProject();
+  }
+
+  await this.projectPage.textGroomandBrideLabelVisible();
+});
+
 Then("I should see the dashboard", async function () {
   await this.dashboardPage.expectDashboardVisible();
 });

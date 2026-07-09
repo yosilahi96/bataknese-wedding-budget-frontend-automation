@@ -7,4 +7,3 @@ Feature: Project
     When I see edit project information
     Then I edit the project information
     And I verify the project information changes
-    

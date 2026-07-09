@@ -34,8 +34,40 @@ class ProjectPage extends BasePage {
         has: this.page.locator("h3", { hasText: "Vendor Recommendations" })
       }),
       vendorRecommendationSearchInput: () => this.elements.vendorRecommendationCard().locator('input[placeholder="Search vendors..."]'),
+      vendorRecommendationAreaDropdown: () => this.elements.vendorRecommendationCard().locator("select").filter({
+        has: this.page.locator("option", { hasText: /area|jakarta/i })
+      }).first(),
+      vendorRecommendationPriceDropdown: () => this.elements.vendorRecommendationCard().locator("select").filter({
+        has: this.page.locator("option", { hasText: /rp|idr|budget|under|below|above|juta|million|\d+\s*m\b/i })
+      }).first(),
+      vendorRecommendationPriceSortDropdown: () => this.elements.vendorRecommendationCard().locator("select").filter({
+        has: this.page.locator("option", { hasText: /low\s*to\s*high|high\s*to\s*low|lowest|highest|ascending|descending|termurah|termahal/i })
+      }).first(),
+      vendorRecommendationCapacityDropdown: () => this.elements.vendorRecommendationCard().locator("select").filter({
+        has: this.page.locator("option", { hasText: /capacity|kapasitas|guest|guests|pax|orang|people/i })
+      }).first(),
+      vendorRecommendationRows: () => this.elements.vendorRecommendationCard().locator("tbody tr"),
+      vendorRecommendationSelectRows: () => this.elements.vendorRecommendationCard().locator("tbody tr").filter({
+        has: this.page.locator("button.btn.btn-primary")
+      }),
+      vendorRecommendationEmptyState: () => this.elements.vendorRecommendationCard().locator(".empty-state, .no-results, p, div").filter({
+        hasText: /no vendors found/i
+      }).first(),
       vendorRecommendationResultRow: (vendorName) => this.elements.vendorRecommendationCard().locator("tbody tr").filter({
         has: this.page.locator("td").filter({ hasText: vendorName })
+      }),
+      vendorRecommendationSelectButton: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator("button.btn.btn-primary"),
+      vendorSelectedModal: () => this.page.locator(".modal").filter({
+        has: this.page.locator("h3", { hasText: "Vendor Selected" })
+      }),
+      vendorSelectedModalOkButton: () => this.elements.vendorSelectedModal().locator("button.btn.btn-primary"),
+      selectedVendorsSidebar: () => this.page.locator(".vendor-sidebar"),
+      selectedVendorRemoveButtons: () => this.elements.selectedVendorsSidebar().locator('button[title="Remove"]'),
+      selectedVendorRemoveButton: (vendorName) => this.elements.selectedVendorsSidebar().locator("div").filter({
+        hasText: vendorName
+      }).locator('button[title="Remove"]').first(),
+      selectedVendorEmptyState: () => this.elements.selectedVendorsSidebar().locator("p", {
+        hasText: "No vendors selected yet. Choose from the recommendations."
       }),
       inProgressProjectCard: () => this.page
         .locator('.card, .card-hover, [class*="card"]')
@@ -149,6 +181,558 @@ class ProjectPage extends BasePage {
 
   async expectVendorRecommendationSearchResult(vendorName) {
     await expect(this.elements.vendorRecommendationResultRow(vendorName)).toBeVisible();
+  }
+
+  async selectFirstAvailableVendorRecommendation() {
+    await this.removeExistingSelectedVendors();
+    await expect(this.elements.vendorRecommendationSelectRows().first()).toBeVisible();
+
+    const vendorRow = this.elements.vendorRecommendationSelectRows().first();
+    const vendorCellText = await vendorRow.locator("td").first().innerText();
+    this.selectedVendorName = vendorCellText.split("\n")[0].trim();
+
+    await expect(this.elements.vendorRecommendationSelectButton(this.selectedVendorName)).toBeVisible();
+    await this.elements.vendorRecommendationSelectButton(this.selectedVendorName).click();
+    await expect(this.elements.vendorSelectedModal()).toBeVisible();
+    await expect(this.elements.vendorSelectedModalOkButton()).toBeVisible();
+    await this.elements.vendorSelectedModalOkButton().click();
+    await expect(this.elements.vendorSelectedModal()).toBeHidden();
+  }
+
+  async removeExistingSelectedVendors() {
+    await expect(this.elements.selectedVendorsSidebar()).toBeVisible();
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const removeButton = this.elements.selectedVendorRemoveButtons().first();
+      const removeButtonVisible = await removeButton.isVisible().catch(() => false);
+
+      if (!removeButtonVisible) {
+        break;
+      }
+
+      await expect(removeButton).toBeVisible();
+      await removeButton.click();
+      await removeButton.waitFor({ state: "hidden", timeout: 5000 }).catch(() => undefined);
+    }
+  }
+
+  async expectSelectedVendorVisible() {
+    await expect(this.elements.selectedVendorsSidebar()).toBeVisible();
+    await expect(this.elements.selectedVendorsSidebar()).toContainText(this.selectedVendorName);
+    await expect(this.elements.vendorRecommendationResultRow(this.selectedVendorName)).toContainText("Selected");
+  }
+
+  async removeSelectedVendor() {
+    await expect(this.elements.selectedVendorRemoveButton(this.selectedVendorName)).toBeVisible();
+    await this.elements.selectedVendorRemoveButton(this.selectedVendorName).click();
+  }
+
+  async expectSelectedVendorRemoved() {
+    await expect(this.elements.selectedVendorsSidebar()).toBeVisible();
+    await expect(this.elements.selectedVendorsSidebar()).not.toContainText(this.selectedVendorName);
+    await expect(this.elements.selectedVendorEmptyState()).toBeVisible();
+    await expect(this.elements.vendorRecommendationResultRow(this.selectedVendorName)).toContainText("Select");
+  }
+
+  async getAreaFilterOptions() {
+    return this.getVendorRecommendationFilterOptions(
+      this.elements.vendorRecommendationAreaDropdown(),
+      /^(all|semua)?\s*area(s)?$/i
+    );
+  }
+
+  async filterVendorRecommendationsByEveryArea() {
+    const areaOptions = await this.getAreaFilterOptions();
+
+    if (areaOptions.length === 0) {
+      throw new Error("Expected the vendor recommendation area dropdown to contain at least one area option.");
+    }
+
+    this.filteredAreaResults = [];
+
+    for (const areaOption of areaOptions) {
+      await expect(this.elements.vendorRecommendationAreaDropdown()).toBeVisible();
+      await this.elements.vendorRecommendationAreaDropdown().selectOption(areaOption.value);
+      await this.page.waitForLoadState("networkidle").catch(() => undefined);
+      await this.expectVendorRecommendationsFilteredByArea(areaOption);
+      this.filteredAreaResults.push(areaOption);
+    }
+  }
+
+  async filterVendorRecommendationsByArea(area) {
+    const areaOption = await this.getAreaFilterOption(area);
+
+    await this.selectVendorRecommendationFilterOption(this.elements.vendorRecommendationAreaDropdown(), areaOption);
+    this.filteredAreaResult = areaOption;
+  }
+
+  async getAreaFilterOption(area) {
+    const areaOptions = await this.getAreaFilterOptions();
+    const normalizedArea = this.normalizeAreaText(area);
+    const areaOption = areaOptions.find((option) =>
+      [option.label, option.value].some((areaText) => this.normalizeAreaText(areaText) === normalizedArea)
+    );
+
+    if (!areaOption) {
+      throw new Error(`Expected area option "${area}" to exist in the vendor recommendation area dropdown.`);
+    }
+
+    return areaOption;
+  }
+
+  async expectEveryAreaFilterWasVerified() {
+    expect(
+      this.filteredAreaResults?.length || 0,
+      "Expected at least one area filter option to be verified."
+    ).toBeGreaterThan(0);
+  }
+
+  async expectVendorRecommendationsFilteredByAreaName(area) {
+    const areaOption = this.filteredAreaResult && this.normalizeAreaText(this.filteredAreaResult.label) === this.normalizeAreaText(area)
+      ? this.filteredAreaResult
+      : await this.getAreaFilterOption(area);
+
+    await this.expectVendorRecommendationsFilteredByArea(areaOption);
+  }
+
+  async expectVendorRecommendationsFilteredByArea(areaOption) {
+    const expectedAreaTexts = [areaOption.label, areaOption.value]
+      .filter(Boolean)
+      .map((areaText) => this.normalizeAreaText(areaText));
+
+    const visibleRowCount = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
+      rows.filter((row) => row.offsetParent !== null).length
+    );
+
+    if (visibleRowCount === 0) {
+      await expect(this.elements.vendorRecommendationEmptyState()).toBeVisible();
+      return;
+    }
+
+    const rowTexts = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
+      rows
+        .filter((row) => row.offsetParent !== null)
+        .map((row) => row.innerText)
+    );
+
+    for (const rowText of rowTexts) {
+      const normalizedRowText = this.normalizeAreaText(rowText);
+      const hasExpectedArea = expectedAreaTexts.some((expectedAreaText) =>
+        normalizedRowText.includes(expectedAreaText)
+      );
+
+      expect(
+        hasExpectedArea,
+        `Expected vendor recommendation row "${rowText}" to match selected area "${areaOption.label}".`
+      ).toBeTruthy();
+    }
+  }
+
+  normalizeAreaText(areaText) {
+    return String(areaText)
+      .toLowerCase()
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  async getPriceFilterOptions() {
+    return this.getVendorRecommendationFilterOptions(
+      this.elements.vendorRecommendationPriceDropdown(),
+      /^(all|semua)?\s*(price|prices|harga|budget)(s)?$/i
+    );
+  }
+
+  async getCapacityFilterOptions() {
+    return this.getVendorRecommendationFilterOptions(
+      this.elements.vendorRecommendationCapacityDropdown(),
+      /^(all|semua)?\s*(capacity|capacities|kapasitas|guest|guests|pax|orang|people)(s)?$/i
+    );
+  }
+
+  async getPriceFilterOption(price) {
+    return this.getVendorRecommendationFilterOption(
+      await this.getPriceFilterOptions(),
+      price,
+      "price"
+    );
+  }
+
+  async getCapacityFilterOption(capacity) {
+    return this.getVendorRecommendationFilterOption(
+      await this.getCapacityFilterOptions(),
+      capacity,
+      "capacity"
+    );
+  }
+
+  getVendorRecommendationFilterOption(options, filterName, filterType) {
+    const normalizedFilterName = this.normalizeFilterText(filterName);
+    const option = options.find((candidate) =>
+      [candidate.label, candidate.value].some((filterText) =>
+        this.normalizeFilterText(filterText) === normalizedFilterName
+      )
+    );
+
+    if (!option) {
+      throw new Error(`Expected ${filterType} option "${filterName}" to exist in the vendor recommendation ${filterType} dropdown.`);
+    }
+
+    return option;
+  }
+
+  async getVendorRecommendationFilterOptions(dropdown, placeholderPattern) {
+    await expect(dropdown).toBeVisible();
+
+    const options = await dropdown.locator("option").evaluateAll((optionNodes) =>
+      optionNodes.map((option) => ({
+        label: option.textContent.trim(),
+        value: option.value
+      }))
+    );
+
+    return options.filter((option) => {
+      const optionText = `${option.label} ${option.value}`.trim();
+      return option.value && !placeholderPattern.test(optionText);
+    });
+  }
+
+  async selectVendorRecommendationFilterOption(dropdown, option) {
+    await expect(dropdown).toBeVisible();
+    await dropdown.selectOption(option.value);
+    await this.page.waitForLoadState("networkidle").catch(() => undefined);
+  }
+
+  async filterVendorRecommendationsByEveryPrice() {
+    const priceOptions = await this.getPriceFilterOptions();
+
+    if (priceOptions.length === 0) {
+      throw new Error("Expected the vendor recommendation price dropdown to contain at least one price option.");
+    }
+
+    this.filteredPriceResults = [];
+
+    for (const priceOption of priceOptions) {
+      await this.selectVendorRecommendationFilterOption(this.elements.vendorRecommendationPriceDropdown(), priceOption);
+      await this.expectVendorRecommendationsFilteredByPrice(priceOption);
+      this.filteredPriceResults.push(priceOption);
+    }
+  }
+
+  async filterVendorRecommendationsByPrice(price) {
+    const priceOption = await this.getPriceFilterOption(price);
+
+    await this.selectVendorRecommendationFilterOption(this.elements.vendorRecommendationPriceDropdown(), priceOption);
+    this.filteredPriceResult = priceOption;
+  }
+
+  async filterVendorRecommendationsByEveryCapacity() {
+    const capacityOptions = await this.getCapacityFilterOptions();
+
+    if (capacityOptions.length === 0) {
+      throw new Error("Expected the vendor recommendation capacity dropdown to contain at least one capacity option.");
+    }
+
+    this.filteredCapacityResults = [];
+
+    for (const capacityOption of capacityOptions) {
+      await this.selectVendorRecommendationFilterOption(this.elements.vendorRecommendationCapacityDropdown(), capacityOption);
+      await this.expectVendorRecommendationsFilteredByCapacity(capacityOption);
+      this.filteredCapacityResults.push(capacityOption);
+    }
+  }
+
+  async filterVendorRecommendationsByCapacity(capacity) {
+    const capacityOption = await this.getCapacityFilterOption(capacity);
+
+    await this.selectVendorRecommendationFilterOption(this.elements.vendorRecommendationCapacityDropdown(), capacityOption);
+    this.filteredCapacityResult = capacityOption;
+  }
+
+  async expectEveryPriceFilterWasVerified() {
+    expect(
+      this.filteredPriceResults?.length || 0,
+      "Expected at least one price filter option to be verified."
+    ).toBeGreaterThan(0);
+  }
+
+  async expectEveryCapacityFilterWasVerified() {
+    expect(
+      this.filteredCapacityResults?.length || 0,
+      "Expected at least one capacity filter option to be verified."
+    ).toBeGreaterThan(0);
+  }
+
+  async expectVendorRecommendationsFilteredByPrice(priceOption) {
+    await this.expectVendorRecommendationsFilteredByNumericRange(priceOption, "price");
+  }
+
+  async expectVendorRecommendationsFilteredByPriceName(price) {
+    const priceOption = this.filteredPriceResult && this.normalizeFilterText(this.filteredPriceResult.label) === this.normalizeFilterText(price)
+      ? this.filteredPriceResult
+      : await this.getPriceFilterOption(price);
+
+    await this.expectVendorRecommendationsFilteredByPrice(priceOption);
+  }
+
+  async sortVendorRecommendationsByPrice(direction) {
+    const sortOption = await this.getPriceSortOption(direction);
+
+    await expect(this.elements.vendorRecommendationPriceSortDropdown()).toBeVisible();
+    await this.elements.vendorRecommendationPriceSortDropdown().selectOption(sortOption.value);
+    await this.page.waitForLoadState("networkidle").catch(() => undefined);
+    this.priceSortDirection = direction;
+  }
+
+  async getPriceSortOption(direction) {
+    await expect(this.elements.vendorRecommendationPriceSortDropdown()).toBeVisible();
+
+    const directionPattern = this.getPriceSortDirectionPattern(direction);
+    const options = await this.elements.vendorRecommendationPriceSortDropdown().locator("option").evaluateAll((optionNodes) =>
+      optionNodes.map((option) => ({
+        label: option.textContent.trim(),
+        value: option.value
+      }))
+    );
+    const sortOption = options.find((option) =>
+      option.value && directionPattern.test(`${option.label} ${option.value}`)
+    );
+
+    if (!sortOption) {
+      throw new Error(`Expected price sort option "${direction}" to exist in the vendor recommendation sort dropdown.`);
+    }
+
+    return sortOption;
+  }
+
+  getPriceSortDirectionPattern(direction) {
+    const normalizedDirection = this.normalizeFilterText(direction);
+
+    if (/low.*high|asc|ascending|termurah/.test(normalizedDirection)) {
+      return /low\s*to\s*high|lowest|asc|ascending|termurah/i;
+    }
+
+    if (/high.*low|desc|descending|termahal/.test(normalizedDirection)) {
+      return /high\s*to\s*low|highest|desc|descending|termahal/i;
+    }
+
+    throw new Error(`Unsupported price sort direction "${direction}". Use "low to high" or "high to low".`);
+  }
+
+  async expectVendorRecommendationsSortedByPrice(direction = this.priceSortDirection) {
+    const visibleRowCount = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
+      rows.filter((row) => row.offsetParent !== null).length
+    );
+
+    if (visibleRowCount === 0) {
+      await expect(this.elements.vendorRecommendationEmptyState()).toBeVisible();
+      return;
+    }
+
+    const rowTexts = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
+      rows
+        .filter((row) => row.offsetParent !== null)
+        .map((row) => row.innerText)
+    );
+    const prices = rowTexts.map((rowText) => {
+      const priceValues = this.extractPriceValues(rowText);
+
+      if (priceValues.length === 0) {
+        throw new Error(`Expected vendor recommendation row "${rowText}" to contain a price.`);
+      }
+
+      return priceValues[0];
+    });
+    const isAscending = /low.*high|asc|ascending|termurah/i.test(this.normalizeFilterText(direction));
+
+    for (let index = 1; index < prices.length; index += 1) {
+      const previousPrice = prices[index - 1];
+      const currentPrice = prices[index];
+      const sortedCorrectly = isAscending
+        ? previousPrice <= currentPrice
+        : previousPrice >= currentPrice;
+
+      expect(
+        sortedCorrectly,
+        `Expected vendor recommendation prices to be sorted ${direction}, but found ${previousPrice} before ${currentPrice}.`
+      ).toBeTruthy();
+    }
+  }
+
+  async expectVendorRecommendationsFilteredByCapacity(capacityOption) {
+    await this.expectVendorRecommendationsFilteredByNumericRange(capacityOption, "capacity");
+  }
+
+  async expectVendorRecommendationsFilteredByCapacityName(capacity) {
+    const capacityOption = this.filteredCapacityResult && this.normalizeFilterText(this.filteredCapacityResult.label) === this.normalizeFilterText(capacity)
+      ? this.filteredCapacityResult
+      : await this.getCapacityFilterOption(capacity);
+
+    await this.expectVendorRecommendationsFilteredByCapacity(capacityOption);
+  }
+
+  async expectVendorRecommendationsFilteredByNumericRange(option, filterType) {
+    const visibleRowCount = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
+      rows.filter((row) => row.offsetParent !== null).length
+    );
+
+    if (visibleRowCount === 0) {
+      await expect(this.elements.vendorRecommendationEmptyState()).toBeVisible();
+      return;
+    }
+
+    const range = this.parseFilterRange(option, filterType);
+    const rowTexts = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
+      rows
+        .filter((row) => row.offsetParent !== null)
+        .map((row) => row.innerText)
+    );
+
+    for (const rowText of rowTexts) {
+      const values = filterType === "price"
+        ? this.extractPriceValues(rowText)
+        : this.extractCapacityValues(rowText);
+      const rowMatchesRange = values.some((value) => this.valueMatchesRange(value, range));
+
+      expect(
+        rowMatchesRange,
+        `Expected vendor recommendation row "${rowText}" to match selected ${filterType} filter "${option.label}".`
+      ).toBeTruthy();
+    }
+  }
+
+  parseFilterRange(option, filterType) {
+    const optionText = `${option.label} ${option.value}`.toLowerCase();
+    const valueRange = this.parseOptionValueRange(option.value, filterType);
+
+    if (valueRange) {
+      return valueRange;
+    }
+
+    const values = this.extractRangeValues(optionText, filterType);
+
+    if (values.length === 0) {
+      throw new Error(`Expected ${filterType} option "${option.label}" to contain a numeric range.`);
+    }
+
+    if (/(under|below|less than|up to|maks|maximum|<=|<)/i.test(optionText)) {
+      return { min: null, max: values[0] };
+    }
+
+    if (/(above|over|more than|minimum|min|>=|>)/i.test(optionText)) {
+      return { min: values[0], max: null };
+    }
+
+    if (values.length === 1) {
+      return { min: values[0], max: values[0] };
+    }
+
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values)
+    };
+  }
+
+  valueMatchesRange(value, range) {
+    if (range.min !== null && value < range.min) {
+      return false;
+    }
+
+    if (range.max !== null && value > range.max) {
+      return false;
+    }
+
+    return true;
+  }
+
+  parseOptionValueRange(value, filterType) {
+    const rangeParts = String(value).match(/(\d[\d.,]*)\s*-\s*(\d[\d.,]*)/);
+
+    if (!rangeParts) {
+      return null;
+    }
+
+    return {
+      min: this.parseNumericValue(rangeParts[1], filterType),
+      max: this.parseNumericValue(rangeParts[2], filterType)
+    };
+  }
+
+  extractRangeValues(text, filterType) {
+    const rangeText = String(text);
+    const unitMatches = filterType === "price"
+      ? rangeText.match(/(?:rp|idr)\s*[\d.,]+|[\d.,]+\s*(?:jt|juta|million|mio|m)\b/gi) || []
+      : rangeText.match(/[\d.,]+/g) || [];
+
+    if (unitMatches.length > 0) {
+      return unitMatches
+        .map((value) => this.parseNumericValue(value, filterType))
+        .filter((value) => Number.isFinite(value));
+    }
+
+    return this.extractNumberValues(rangeText, filterType);
+  }
+
+  extractPriceValues(text) {
+    const priceMatches = String(text).match(/(?:rp|idr)\s*[\d.,]+|[\d.,]+\s*(?:jt|juta|million|mio|m)\b/gi) || [];
+    const values = priceMatches
+      .map((value) => this.parseNumericValue(value, "price"))
+      .filter((value) => Number.isFinite(value));
+
+    return values.length > 0 ? values : this.extractNumberValues(text, "price");
+  }
+
+  extractCapacityValues(text) {
+    const normalizedText = String(text);
+    const capacityMatches = [
+      ...normalizedText.matchAll(/(?:capacity|kapasitas|guest|guests|pax|orang|people)\D{0,20}([\d.,]+)/gi),
+      ...normalizedText.matchAll(/([\d.,]+)\s*(?:capacity|kapasitas|guest|guests|pax|orang|people)/gi)
+    ];
+    const values = capacityMatches
+      .map((match) => this.parseNumericValue(match[1], "capacity"))
+      .filter((value) => Number.isFinite(value));
+
+    if (values.length > 0) {
+      return values;
+    }
+
+    return this.extractNumberValues(normalizedText.replace(/(?:rp|idr)\s*[\d.,]+/gi, ""), "capacity")
+      .filter((value) => value < 100000);
+  }
+
+  extractNumberValues(text, filterType) {
+    return (String(text).match(/\d[\d.,]*/g) || [])
+      .map((value) => this.parseNumericValue(value, filterType))
+      .filter((value) => Number.isFinite(value));
+  }
+
+  parseNumericValue(value, filterType) {
+    const rawValue = String(value).toLowerCase();
+    const hasMillionUnit = /(jt|juta|million|mio|\bm\b)/i.test(rawValue);
+    const numericText = rawValue.replace(/[^\d.,]/g, "");
+    const normalizedNumber = numericText.replace(/[.,]/g, "");
+    const parsedValue = Number(normalizedNumber);
+
+    if (!Number.isFinite(parsedValue)) {
+      return Number.NaN;
+    }
+
+    if (filterType === "price" && hasMillionUnit && parsedValue < 100000) {
+      return parsedValue * 1000000;
+    }
+
+    return parsedValue;
+  }
+
+  normalizeFilterText(filterText) {
+    return String(filterText)
+      .toLowerCase()
+      .replace(/\+/g, " plus")
+      .replace(/</g, " less than ")
+      .replace(/>/g, " greater than ")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 }
 module.exports = ProjectPage;
