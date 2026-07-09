@@ -58,6 +58,30 @@ Then("I verify the vendor recommendation search result matched", async function 
   await this.projectPage.expectVendorRecommendationSearchResult(this.vendorRecommendationName);
 });
 
+When("I choose {int} vendor recommendations to compare", async function (vendorCount) {
+  await this.projectPage.compareVendorRecommendations(vendorCount);
+});
+
+When("I try to choose another vendor recommendation to compare", async function () {
+  await this.projectPage.tryToCompareOneMoreVendor(3);
+});
+
+Then("I verify only {int} vendor recommendations can be compared", async function (vendorCount) {
+  await this.projectPage.expectVendorComparisonLimit(vendorCount);
+});
+
+When("I open the vendor comparison", async function () {
+  await this.projectPage.openVendorComparison();
+});
+
+Then("I verify the vendor comparison shows {int} vendors", async function (vendorCount) {
+  await this.projectPage.expectVendorComparisonModalShowsComparedVendors(vendorCount);
+});
+
+Then("I verify the most budget friendly vendor is green highlighted", async function () {
+  await this.projectPage.expectMostBudgetFriendlyVendorHighlighted();
+});
+
 When("I filter vendor recommendations by each available area", async function () {
   await this.projectPage.filterVendorRecommendationsByEveryArea();
 });

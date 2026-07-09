@@ -62,6 +62,25 @@ class ProjectPage extends BasePage {
         has: this.page.locator("td").filter({ hasText: vendorName })
       }),
       vendorRecommendationSelectButton: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator("button.btn.btn-primary:not(:disabled)").filter({ hasText: /^Select$/i }).first(),
+      vendorRecommendationCompareRows: () => this.elements.vendorRecommendationRows().filter({
+        has: this.page.locator("button").filter({ hasText: /^Compare$/i })
+      }),
+      vendorRecommendationUnselectCompareButtons: () => this.elements.vendorRecommendationCard().locator("tbody tr button").filter({
+        hasText: /^Unselect$/i
+      }),
+      vendorRecommendationOpenComparisonButton: () => this.elements.vendorRecommendationCard().getByRole("button", {
+        name: /^Compare \(\d+\)$/i
+      }),
+      vendorComparisonModal: () => this.page.locator(".modal:visible").filter({
+        has: this.page.locator("h3", { hasText: "Vendor Comparison" })
+      }).first(),
+      vendorComparisonTable: () => this.elements.vendorComparisonModal().locator("table"),
+      vendorComparisonHeaders: () => this.elements.vendorComparisonTable().locator("thead th").filter({
+        hasText: /[A-Za-z]/
+      }),
+      vendorComparisonBestValueCells: () => this.elements.vendorComparisonTable().locator("td.best-value"),
+      vendorComparisonBudgetFriendlyVendor: () => this.elements.vendorComparisonModal().locator("strong").first(),
+      vendorComparisonCloseButton: () => this.elements.vendorComparisonModal().getByRole("button", { name: /^Close$/i }),
       vendorSelectedModal: () => this.page.locator(".modal", { hasText: "Vendor Selected" }),
       vendorSelectedModalOkButton: () => this.elements.vendorSelectedModal().getByRole("button", { name: /^OK$/i }),
       vendorSelectionErrorModal: () => this.page.locator(".modal").filter({
@@ -215,6 +234,133 @@ class ProjectPage extends BasePage {
 
   async expectVendorRecommendationSearchResult(vendorName) {
     await expect(this.elements.vendorRecommendationResultRow(vendorName)).toBeVisible();
+  }
+
+  async compareVendorRecommendations(expectedCount) {
+    await this.clearVendorComparisonSelection();
+    await expect(this.elements.vendorRecommendationCompareRows().first()).toBeVisible();
+
+    this.comparedVendors = [];
+
+    for (let index = 0; index < expectedCount; index += 1) {
+      const vendorRow = this.elements.vendorRecommendationCompareRows().first();
+
+      await expect(vendorRow).toBeVisible();
+
+      const vendorName = (await vendorRow.locator("td").first().innerText()).split("\n")[0].trim();
+      const rowText = await vendorRow.innerText();
+      const prices = this.extractPriceValues(rowText);
+
+      if (prices.length === 0) {
+        throw new Error(`Expected vendor recommendation "${vendorName}" to contain a price before comparing.`);
+      }
+
+      this.comparedVendors.push({
+        name: vendorName,
+        minPrice: Math.min(...prices)
+      });
+
+      const compareButton = vendorRow.locator("button").filter({ hasText: /^Compare$/i }).first();
+
+      await expect(compareButton).toBeVisible();
+      await compareButton.click();
+    }
+
+    await expect(this.elements.vendorRecommendationOpenComparisonButton()).toHaveText(`Compare (${expectedCount})`);
+  }
+
+  async tryToCompareOneMoreVendor(maxCount) {
+    await expect(this.elements.vendorRecommendationOpenComparisonButton()).toHaveText(`Compare (${maxCount})`);
+
+    const extraCompareButton = this.elements.vendorRecommendationCompareRows()
+      .first()
+      .locator("button")
+      .filter({ hasText: /^Compare$/i })
+      .first();
+
+    await expect(extraCompareButton).toBeVisible();
+    await extraCompareButton.click();
+  }
+
+  async expectVendorComparisonLimit(maxCount) {
+    await expect(this.elements.vendorRecommendationOpenComparisonButton()).toHaveText(`Compare (${maxCount})`);
+    await expect(this.elements.vendorRecommendationUnselectCompareButtons()).toHaveCount(maxCount);
+  }
+
+  async openVendorComparison() {
+    await expect(this.elements.vendorRecommendationOpenComparisonButton()).toBeVisible();
+    await this.elements.vendorRecommendationOpenComparisonButton().click();
+    await expect(this.elements.vendorComparisonModal()).toBeVisible();
+  }
+
+  async expectVendorComparisonModalShowsComparedVendors(expectedCount) {
+    await expect(this.elements.vendorComparisonModal()).toBeVisible();
+    await expect(this.elements.vendorComparisonHeaders()).toHaveCount(expectedCount);
+
+    for (const vendor of this.comparedVendors || []) {
+      await expect(this.elements.vendorComparisonHeaders().filter({ hasText: vendor.name })).toBeVisible();
+    }
+  }
+
+  async expectMostBudgetFriendlyVendorHighlighted() {
+    const cheapestVendor = this.getCheapestComparedVendor();
+
+    await expect(this.elements.vendorComparisonBudgetFriendlyVendor()).toBeVisible();
+    await expect(this.elements.vendorComparisonBudgetFriendlyVendor()).toHaveText(cheapestVendor.name);
+    await expect(this.elements.vendorComparisonBestValueCells()).toHaveCount(1);
+
+    const highlightedCell = this.elements.vendorComparisonBestValueCells().first();
+
+    await expect(highlightedCell).toBeVisible();
+    await expect(highlightedCell).toHaveText(this.formatRupiah(cheapestVendor.minPrice));
+
+    const highlightedCellStyle = await highlightedCell.evaluate((element) => {
+      const style = window.getComputedStyle(element);
+
+      return {
+        backgroundColor: style.backgroundColor,
+        fontWeight: style.fontWeight
+      };
+    });
+
+    expect(
+      highlightedCellStyle.backgroundColor,
+      "Expected the most budget-friendly min price cell to be green highlighted."
+    ).toBe("rgb(220, 252, 231)");
+    expect(Number(highlightedCellStyle.fontWeight)).toBeGreaterThanOrEqual(600);
+  }
+
+  async clearVendorComparisonSelection() {
+    await this.dismissVisibleModalIfPresent();
+    await expect(this.elements.vendorRecommendationCard()).toBeVisible();
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const unselectButton = this.elements.vendorRecommendationUnselectCompareButtons().first();
+      const unselectButtonVisible = await unselectButton.isVisible().catch(() => false);
+
+      if (!unselectButtonVisible) {
+        break;
+      }
+
+      await expect(unselectButton).toBeVisible();
+      await unselectButton.click();
+    }
+
+    await expect(this.elements.vendorRecommendationUnselectCompareButtons()).toHaveCount(0);
+  }
+
+  getCheapestComparedVendor() {
+    if (!this.comparedVendors || this.comparedVendors.length === 0) {
+      throw new Error("Expected compared vendors to be captured before verifying the comparison modal.");
+    }
+
+    return this.comparedVendors.reduce((cheapest, vendor) =>
+      vendor.minPrice < cheapest.minPrice ? vendor : cheapest
+    );
+  }
+
+  formatRupiah(value) {
+    return `Rp ${Number(value).toLocaleString("id-ID")}`;
   }
 
   async selectFirstAvailableVendorRecommendation() {
