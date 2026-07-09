@@ -1,5 +1,6 @@
 const { expect } = require("@playwright/test");
 const BasePage = require("./base_page");
+const config = require("../support/env");
 
 class DashboardPage extends BasePage {
   constructor(page) {
@@ -15,7 +16,7 @@ class DashboardPage extends BasePage {
   }
 
   async expectDashboardVisible() {
-    await expect(this.page).not.toHaveURL(/\/login/i, { timeout: 10000 });
+    await expect(this.page).not.toHaveURL(/\/login/i, { timeout: config.defaultTimeout });
     await expect(this.elements.appName()).toBeVisible();
     await expect(this.elements.vendorsNavigation()).toBeVisible();
     await expect(this.elements.logoutButton()).toBeVisible();

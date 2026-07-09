@@ -12,3 +12,4 @@
 - Write the steps into steps folder
 - For the steps always wait until element visible before you click or do verify
 - Execute the test file and iterate until the test passes
+- Please advice this automation test is also run on production, so make sure it will run correctly in production

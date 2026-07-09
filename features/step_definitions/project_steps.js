@@ -2,28 +2,42 @@ const { Given, When, Then } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 
 When("I see edit project information", async function () {
-  await this.projectPage.expecteditProjectButtonVisible();
-  await this.projectPage.elements.editProjectButton().click();
+  const editProjectButton = this.projectPage.elements.editProjectButton();
+
+  await expect(editProjectButton).toBeVisible();
+  await editProjectButton.click();
+});
+
+When("I open an existing project detail page", async function () {
+  await this.projectPage.openExistingInProgressProject();
+  await this.projectPage.textGroomandBrideLabelVisible();
 });
 
 Then("I edit the project information", async function () {
-  await this.projectPage.saveEditProjectButtonVisible();
-  await this.projectPage.editGroomNameProjectVisible();
-  await this.projectPage.elements.editGroomNameProject().click();
-  await this.projectPage.elements.editGroomNameProject().clear();
+  const groomNameInput = this.projectPage.elements.editGroomNameProject();
+  const saveEditProjectButton = this.projectPage.elements.saveEditProjectButton();
+
+  await expect(saveEditProjectButton).toBeVisible();
+  await expect(groomNameInput).toBeVisible();
+  await groomNameInput.click();
+  await groomNameInput.clear();
   this.groomName = `Yosu${Date.now()}`;
-  await this.projectPage.editGroomNameProjectVisible();
-  await this.projectPage.elements.editGroomNameProject().fill(this.groomName);
-  await this.projectPage.saveEditProjectButtonVisible();
-  await this.projectPage.elements.saveEditProjectButton().click();
+  await expect(groomNameInput).toBeVisible();
+  await groomNameInput.fill(this.groomName);
+  await expect(saveEditProjectButton).toBeVisible();
+  await saveEditProjectButton.click();
 });
 
 Then("I verify the project information changes", async function(){
-  await expect(this.projectPage.page.getByText('Project Updated')).toBeVisible();
-  await expect(this.projectPage.elements.confirmEditProjectButton()).toBeVisible();
-  await this.projectPage.elements.confirmEditProjectButton().click();
-  await this.projectPage.textGroomandBrideLabelVisible();
-  await expect(this.projectPage.elements.textGroomandBrideLabel()).toContainText(this.groomName);
+  const projectUpdatedText = this.projectPage.page.getByText("Project Updated");
+  const confirmEditProjectButton = this.projectPage.elements.confirmEditProjectButton();
+  const projectTitle = this.projectPage.elements.textGroomandBrideLabel();
+
+  await expect(projectUpdatedText).toBeVisible();
+  await expect(confirmEditProjectButton).toBeVisible();
+  await confirmEditProjectButton.click();
+  await expect(projectTitle).toBeVisible();
+  await expect(projectTitle).toContainText(this.groomName);
 });
 
 When("I add a category with the required field", async function () {
@@ -114,4 +128,12 @@ When("I remove the selected vendor", async function () {
 
 Then("I verify the selected vendor has been removed", async function () {
   await this.projectPage.expectSelectedVendorRemoved();
+});
+
+When("I export the project budget as {string}", async function (exportType) {
+  await this.projectPage.downloadBudgetExport(exportType, this.artifactsDir);
+});
+
+Then("I verify the downloaded {string} budget file is correct", async function (exportType) {
+  await this.projectPage.expectBudgetExportCorrect(exportType);
 });

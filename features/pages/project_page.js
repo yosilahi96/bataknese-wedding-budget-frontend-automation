@@ -1,4 +1,7 @@
 const { expect } = require("@playwright/test");
+const fs = require("fs");
+const path = require("path");
+const zlib = require("zlib");
 const BasePage = require("./base_page");
 
 class ProjectPage extends BasePage {
@@ -10,6 +13,8 @@ class ProjectPage extends BasePage {
       saveEditProjectButton: () => this.page.locator('button[type="submit"].btn.btn-primary'),
       editGroomNameProject: () => this.page.locator('input[type="text"][required]').first(),
       textGroomandBrideLabel: () => this.page.locator('h1.page-title'),
+      exportPdfButton: () => this.page.locator("button.btn.btn-outline.btn-sm").filter({ hasText: /^PDF$/i }),
+      exportExcelButton: () => this.page.locator("button.btn.btn-outline.btn-sm").filter({ hasText: /^Excel$/i }),
       confirmEditProjectButton: () => this.page.locator('.modal .modal-actions button.btn.btn-primary'),
       newProjectButton: () => this.page.getByRole("button", { name: /New Project/i }),
       createProjectButton: () => this.page.getByRole("button", { name: "Create Project" }),
@@ -67,6 +72,7 @@ class ProjectPage extends BasePage {
       selectedVendorEmptyState: () => this.elements.selectedVendorsSidebar().locator("p", {
         hasText: "No vendors selected yet. Choose from the recommendations."
       }),
+      existingProjectCard: () => this.page.locator(".card.card-hover").first(),
       inProgressProjectCard: () => this.page
         .locator('.card, .card-hover, [class*="card"]')
         .filter({ has: this.page.getByText(/^In Progress$/i) })
@@ -90,6 +96,11 @@ class ProjectPage extends BasePage {
     await expect(this.elements.textGroomandBrideLabel()).toBeVisible();
   }
 
+  async expectExportButtonsVisible() {
+    await expect(this.elements.exportPdfButton()).toBeVisible();
+    await expect(this.elements.exportExcelButton()).toBeVisible();
+  }
+
   async expectInProgressProjectCardVisible() {
     await expect(
       this.elements.inProgressProjectCard(),
@@ -97,26 +108,40 @@ class ProjectPage extends BasePage {
     ).toBeVisible();
   }
 
+  async expectExistingProjectCardVisible() {
+    await expect(
+      this.elements.existingProjectCard(),
+      "Expected at least one existing project card on the project overview page."
+    ).toBeVisible();
+  }
+
   async openInProgressProject() {
-    if (await this.elements.inProgressProjectCard().isVisible().catch(() => false)) {
+    await this.openExistingInProgressProject();
+  }
+
+  async openExistingInProgressProject() {
+    const inProgressProjectVisible = await this.elements.inProgressProjectCard()
+      .isVisible()
+      .catch(() => false);
+
+    if (inProgressProjectVisible) {
       await expect(this.elements.inProgressProjectCard()).toBeVisible();
       await this.elements.inProgressProjectCard().click();
       return;
     }
 
+    await this.expectExistingProjectCardVisible();
+    await this.elements.existingProjectCard().click();
+  }
+
+  async createAndOpenNewInProgressProject() {
     await this.createInProgressProject();
 
     if (await this.elements.editProjectButton().waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false)) {
       return;
     }
 
-    await this.expectInProgressProjectCardVisible();
-    await this.elements.inProgressProjectCard().click();
-  }
-
-  async openExistingInProgressProject() {
-    await this.expectInProgressProjectCardVisible();
-    await this.elements.inProgressProjectCard().click();
+    await this.openExistingInProgressProject();
   }
 
   async createInProgressProject() {
@@ -755,6 +780,172 @@ class ProjectPage extends BasePage {
       await this.elements.vendorSelectedModalOkButton().click();
       await expect(this.elements.vendorSelectedModal()).toBeHidden();
     }
+  }
+
+  async downloadBudgetExport(exportType, downloadDir) {
+    await this.expectExportButtonsVisible();
+    this.projectTitle = (await this.elements.textGroomandBrideLabel().innerText()).trim();
+    this.totalBudgetText = (await this.page.locator(".stat-card").filter({ hasText: /total budget/i }).locator(".stat-value").innerText()).trim();
+    this.downloadedBudgetExport = await this.downloadExport(this.getExportButton(exportType), downloadDir);
+  }
+
+  getExportButton(exportType) {
+    if (/^pdf$/i.test(exportType)) {
+      return this.elements.exportPdfButton();
+    }
+
+    if (/^excel$/i.test(exportType)) {
+      return this.elements.exportExcelButton();
+    }
+
+    throw new Error(`Unsupported budget export type "${exportType}". Use "PDF" or "Excel".`);
+  }
+
+  async downloadExport(button, downloadDir) {
+    fs.mkdirSync(downloadDir, { recursive: true });
+    await expect(button).toBeVisible();
+
+    const [download] = await Promise.all([
+      this.page.waitForEvent("download"),
+      button.click()
+    ]);
+    const filePath = path.join(downloadDir, download.suggestedFilename());
+
+    await download.saveAs(filePath);
+    expect(fs.existsSync(filePath)).toBeTruthy();
+
+    return {
+      filePath,
+      suggestedFilename: download.suggestedFilename(),
+      size: fs.statSync(filePath).size
+    };
+  }
+
+  async expectBudgetExportCorrect(exportType) {
+    expect(this.downloadedBudgetExport, `Expected a downloaded ${exportType} export.`).toBeTruthy();
+
+    if (/^pdf$/i.test(exportType)) {
+      this.expectPdfBudgetExportCorrect(this.downloadedBudgetExport);
+      return;
+    }
+
+    if (/^excel$/i.test(exportType)) {
+      this.expectExcelBudgetExportCorrect(this.downloadedBudgetExport);
+      return;
+    }
+
+    throw new Error(`Unsupported budget export type "${exportType}". Use "PDF" or "Excel".`);
+  }
+
+  expectPdfBudgetExportCorrect(downloadedFile) {
+    this.expectDownloadedFile(downloadedFile, ".pdf", "%PDF-");
+    this.expectProjectNameInFilename(downloadedFile);
+
+    const pdfText = this.extractPdfText(downloadedFile.filePath);
+
+    expect(pdfText).toMatch(/Bataknese/i);
+    expect(pdfText).toMatch(/Budget/i);
+    expect(pdfText).toMatch(/Repor/i);
+    expect(pdfText).toMatch(/Groom/i);
+    expect(pdfText).toMatch(/Br.*ide/i);
+    expect(pdfText).toContain(this.totalBudgetText);
+  }
+
+  expectExcelBudgetExportCorrect(downloadedFile) {
+    this.expectDownloadedFile(downloadedFile, ".xlsx", "PK\u0003\u0004");
+    this.expectProjectNameInFilename(downloadedFile);
+
+    const excelText = this.extractXlsxText(downloadedFile.filePath);
+
+    this.expectProjectNameInText(excelText);
+
+    expect(excelText).toMatch(/Budget/i);
+    expect(excelText).toContain(this.totalBudgetText.replace(/[^\d]/g, ""));
+  }
+
+  expectProjectNameInFilename(downloadedFile) {
+    for (const namePart of this.projectNameParts()) {
+      expect(downloadedFile.suggestedFilename).toContain(namePart);
+    }
+  }
+
+  expectProjectNameInText(text) {
+    for (const namePart of this.projectNameParts()) {
+      expect(text).toContain(namePart);
+    }
+  }
+
+  projectNameParts() {
+    return this.projectTitle.split("&").map((name) => name.trim()).filter(Boolean);
+  }
+
+  expectDownloadedFile(downloadedFile, extension, signature) {
+    expect(downloadedFile.suggestedFilename.toLowerCase()).toContain(extension);
+    expect(downloadedFile.size).toBeGreaterThan(0);
+
+    const header = fs.readFileSync(downloadedFile.filePath).slice(0, signature.length).toString("latin1");
+    expect(header).toBe(signature);
+  }
+
+  extractPdfText(filePath) {
+    const buffer = fs.readFileSync(filePath);
+    const raw = buffer.toString("latin1");
+    const chunks = [];
+
+    for (const match of raw.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
+      const streamStart = raw.indexOf(match[1], match.index);
+      const streamBuffer = buffer.slice(streamStart, streamStart + match[1].length);
+
+      try {
+        chunks.push(zlib.inflateSync(streamBuffer).toString("latin1"));
+      } catch {
+        chunks.push(streamBuffer.toString("latin1"));
+      }
+    }
+
+    return chunks
+      .join("\n")
+      .replace(/<([0-9A-Fa-f\s]+)>/g, (_, hex) => Buffer.from(hex.replace(/\s+/g, ""), "hex").toString("latin1"))
+      .replace(/\s+/g, " ");
+  }
+
+  extractXlsxText(filePath) {
+    return this.readZipEntries(fs.readFileSync(filePath))
+      .map((entry) => entry.text)
+      .join("\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+  }
+
+  readZipEntries(buffer) {
+    const entries = [];
+    let offset = 0;
+
+    while (offset < buffer.length - 30) {
+      if (buffer.readUInt32LE(offset) !== 0x04034b50) {
+        offset += 1;
+        continue;
+      }
+
+      const method = buffer.readUInt16LE(offset + 8);
+      const compressedSize = buffer.readUInt32LE(offset + 18);
+      const nameLength = buffer.readUInt16LE(offset + 26);
+      const extraLength = buffer.readUInt16LE(offset + 28);
+      const dataStart = offset + 30 + nameLength + extraLength;
+      const data = buffer.slice(dataStart, dataStart + compressedSize);
+      let text = "";
+
+      try {
+        text = (method === 8 ? zlib.inflateRawSync(data) : data).toString("utf8");
+      } catch {
+        text = "";
+      }
+
+      entries.push({ text });
+      offset = dataStart + compressedSize;
+    }
+
+    return entries;
   }
 }
 module.exports = ProjectPage;

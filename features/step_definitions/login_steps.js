@@ -45,7 +45,7 @@ Given("I am logged in using {string}", async function (credentialsFile) {
 
 Given("I am on project overview using {string}", async function (credentialsFile) {
   await loginToDashboard(this, credentialsFile);
-  await this.projectPage.openInProgressProject();
+  await this.projectPage.openExistingInProgressProject();
 });
 
 Given("I am on the project detail page using {string}", async function (credentialsFile) {
@@ -56,9 +56,15 @@ Given("I am on the project detail page using {string}", async function (credenti
   if (projectDetailPath) {
     await this.basePage.goto(this.frontendUrl(projectDetailPath));
   } else {
-    await this.projectPage.openInProgressProject();
+    await this.projectPage.openExistingInProgressProject();
   }
 
+  await this.projectPage.textGroomandBrideLabelVisible();
+});
+
+Given("I am on a new project detail page using {string}", async function (credentialsFile) {
+  await loginToDashboard(this, credentialsFile);
+  await this.projectPage.createAndOpenNewInProgressProject();
   await this.projectPage.textGroomandBrideLabelVisible();
 });
 
