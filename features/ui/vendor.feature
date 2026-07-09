@@ -19,6 +19,16 @@ Feature: vendor
     | catering          |
     | gondang           |
 
+  @vendor_batak_specialist_filter
+  Scenario Outline: User able to filter list of vendor by Batak specialist
+    When I navigate to vendor directory page
+    And I check "<specialist_filter>" vendor filter
+    Then I wait until vendor list is filtered by "<specialist_filter>"
+    And I should see only "<specialist_filter>" vendors in the list
+
+  Examples:
+    | specialist_filter |
+    | Batak Specialist  |
 
 
 

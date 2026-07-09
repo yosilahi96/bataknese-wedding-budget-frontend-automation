@@ -6,6 +6,10 @@ When("I able to access vendor page", async function () {
   await this.dashboardPage.elements.vendorlistLink().click();
 });
 
+When("I navigate to vendor directory page", async function () {
+  await this.vendorPage.open(this.frontendUrl("/vendors"));
+});
+
 Then("I should see list of vendor", async function () {
   await this.vendorPage.expectdetailsvendorButtonVisible();
 });
@@ -42,4 +46,31 @@ Then("I should able to filter vendor by {string}", async function (result){
     await expect(this.vendorPage.elements.vendorcategoryLabel()).toHaveText(/GONDANG/i);
     return;
   }
+});
+
+When("I check {string} vendor filter", async function (filterName) {
+  if (filterName === "Batak Specialist") {
+    await this.vendorPage.checkBatakSpecialistOnly();
+    return;
+  }
+
+  throw new Error(`Unsupported vendor filter "${filterName}". Use "Batak Specialist".`);
+});
+
+Then("I wait until vendor list is filtered by {string}", async function (filterName) {
+  if (filterName === "Batak Specialist") {
+    await this.vendorPage.waitUntilBatakSpecialistFiltered();
+    return;
+  }
+
+  throw new Error(`Unsupported vendor filter "${filterName}". Use "Batak Specialist".`);
+});
+
+Then("I should see only {string} vendors in the list", async function (filterName) {
+  if (filterName === "Batak Specialist") {
+    await this.vendorPage.expectOnlyBatakSpecialistVendorsVisible();
+    return;
+  }
+
+  throw new Error(`Unsupported vendor filter "${filterName}". Use "Batak Specialist".`);
 });

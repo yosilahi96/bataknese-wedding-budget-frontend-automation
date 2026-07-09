@@ -4,6 +4,7 @@
 - DO run steps one by one using the tools provided by the Playwright MCP.
 - Login using this credential email : yosilahi10@gmail.com password yosua123
 - Only after all steps are completed, emit a Playwright TypeScript test that uses  @playwright/test based on message history
+- When looking into some element, please focus on the element that we use don't observe all
 - Write the test using Gherking scenario, you can look into features folder
 - On the feature files, please don't write project unique path
 - When the feature require to filter, please make turns the scenario into scenario outline and using examples
