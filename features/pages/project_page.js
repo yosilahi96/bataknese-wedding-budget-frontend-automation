@@ -64,6 +64,12 @@ class ProjectPage extends BasePage {
       vendorRecommendationSelectButton: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator("button.btn.btn-primary:not(:disabled)").filter({ hasText: /^Select$/i }).first(),
       vendorSelectedModal: () => this.page.locator(".modal", { hasText: "Vendor Selected" }),
       vendorSelectedModalOkButton: () => this.elements.vendorSelectedModal().getByRole("button", { name: /^OK$/i }),
+      vendorSelectionErrorModal: () => this.page.locator(".modal").filter({
+        hasText: /error|failed|unable|cannot|already|gagal|tidak bisa/i
+      }).first(),
+      visibleModalActionButton: () => this.page.locator(".modal:visible").getByRole("button", {
+        name: /^(OK|Ok|Close|Cancel|Tutup)$/i
+      }).first(),
       selectedVendorsSidebar: () => this.page.locator(".vendor-sidebar"),
       selectedVendorRemoveButtons: () => this.elements.selectedVendorsSidebar().locator('button[title="Remove"]'),
       selectedVendorRemoveButton: (vendorName) => this.elements.selectedVendorsSidebar().locator("div").filter({
@@ -215,23 +221,69 @@ class ProjectPage extends BasePage {
     await this.removeExistingSelectedVendors();
     await expect(this.elements.vendorRecommendationSelectRows().first()).toBeVisible();
 
-    const vendorRow = this.elements.vendorRecommendationSelectRows().first();
-    const vendorCellText = await vendorRow.locator("td").first().innerText();
-    this.selectedVendorName = vendorCellText.split("\n")[0].trim();
+    const availableVendorCount = await this.elements.vendorRecommendationSelectRows().count();
+    let lastSelectionError = null;
 
-    await expect(this.elements.vendorRecommendationSelectButton(this.selectedVendorName)).toBeVisible();
-    await this.elements.vendorRecommendationSelectButton(this.selectedVendorName).click();
+    for (let index = 0; index < availableVendorCount; index += 1) {
+      const vendorRow = this.elements.vendorRecommendationSelectRows().nth(index);
 
-    const selectedModalVisible = await this.elements.vendorSelectedModal()
-      .waitFor({ state: "visible", timeout: 3000 })
-      .then(() => true)
-      .catch(() => false);
+      await expect(vendorRow).toBeVisible();
 
-    if (selectedModalVisible) {
+      const vendorCellText = await vendorRow.locator("td").first().innerText();
+      this.selectedVendorName = vendorCellText.split("\n")[0].trim();
+      const selectButton = this.elements.vendorRecommendationSelectButton(this.selectedVendorName);
+
+      await expect(selectButton).toBeVisible();
+      await selectButton.click();
+
+      const selectionOutcome = await this.waitForVendorSelectionOutcome(this.selectedVendorName);
+
+      if (selectionOutcome === "selected") {
+        return;
+      }
+
+      lastSelectionError = selectionOutcome;
+    }
+
+    throw new Error(lastSelectionError || "Expected at least one vendor recommendation to be selectable.");
+  }
+
+  async waitForVendorSelectionOutcome(vendorName) {
+    const selectedOutcome = expect(this.elements.selectedVendorsSidebar())
+      .toContainText(vendorName, { timeout: 10000 })
+      .then(() => "selected")
+      .catch(() => null);
+    const successModalOutcome = this.elements.vendorSelectedModal()
+      .waitFor({ state: "visible", timeout: 10000 })
+      .then(() => "success-modal")
+      .catch(() => null);
+    const errorModalOutcome = this.elements.vendorSelectionErrorModal()
+      .waitFor({ state: "visible", timeout: 10000 })
+      .then(() => "error-modal")
+      .catch(() => null);
+
+    const outcome = await Promise.race([
+      selectedOutcome,
+      successModalOutcome,
+      errorModalOutcome
+    ]);
+
+    if (outcome === "success-modal") {
       await expect(this.elements.vendorSelectedModalOkButton()).toBeVisible();
       await this.elements.vendorSelectedModalOkButton().click();
       await expect(this.elements.vendorSelectedModal()).toBeHidden();
+      await expect(this.elements.selectedVendorsSidebar()).toContainText(vendorName);
+      return "selected";
     }
+
+    if (outcome === "error-modal") {
+      const errorText = await this.elements.vendorSelectionErrorModal().innerText().catch(() => "Vendor selection error modal appeared.");
+
+      await this.dismissVisibleModalIfPresent();
+      return `Vendor "${vendorName}" could not be selected. Modal text: ${errorText}`;
+    }
+
+    return outcome || `Vendor "${vendorName}" was not selected and no success or error modal appeared.`;
   }
 
   async removeExistingSelectedVendors() {
@@ -259,6 +311,7 @@ class ProjectPage extends BasePage {
 
   async removeSelectedVendor() {
     await this.dismissVendorSelectedModalIfVisible();
+    await this.dismissVisibleModalIfPresent();
     await expect(this.elements.selectedVendorRemoveButton(this.selectedVendorName)).toBeVisible();
     await this.elements.selectedVendorRemoveButton(this.selectedVendorName).click();
   }
@@ -779,6 +832,23 @@ class ProjectPage extends BasePage {
       await expect(this.elements.vendorSelectedModalOkButton()).toBeVisible();
       await this.elements.vendorSelectedModalOkButton().click();
       await expect(this.elements.vendorSelectedModal()).toBeHidden();
+    }
+  }
+
+  async dismissVisibleModalIfPresent() {
+    const visibleModal = this.page.locator(".modal:visible").first();
+    const visibleModalPresent = await visibleModal.isVisible().catch(() => false);
+
+    if (!visibleModalPresent) {
+      return;
+    }
+
+    const actionButton = this.elements.visibleModalActionButton();
+
+    if (await actionButton.isVisible().catch(() => false)) {
+      await expect(actionButton).toBeVisible();
+      await actionButton.click();
+      await expect(visibleModal).toBeHidden();
     }
   }
 
