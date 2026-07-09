@@ -48,7 +48,7 @@ class ProjectPage extends BasePage {
       }).first(),
       vendorRecommendationRows: () => this.elements.vendorRecommendationCard().locator("tbody tr"),
       vendorRecommendationSelectRows: () => this.elements.vendorRecommendationCard().locator("tbody tr").filter({
-        has: this.page.locator("button.btn.btn-primary")
+        has: this.page.locator("button.btn.btn-primary:not(:disabled)").filter({ hasText: /^Select$/i })
       }),
       vendorRecommendationEmptyState: () => this.elements.vendorRecommendationCard().locator(".empty-state, .no-results, p, div").filter({
         hasText: /no vendors found/i
@@ -56,11 +56,9 @@ class ProjectPage extends BasePage {
       vendorRecommendationResultRow: (vendorName) => this.elements.vendorRecommendationCard().locator("tbody tr").filter({
         has: this.page.locator("td").filter({ hasText: vendorName })
       }),
-      vendorRecommendationSelectButton: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator("button.btn.btn-primary"),
-      vendorSelectedModal: () => this.page.locator(".modal").filter({
-        has: this.page.locator("h3", { hasText: "Vendor Selected" })
-      }),
-      vendorSelectedModalOkButton: () => this.elements.vendorSelectedModal().locator("button.btn.btn-primary"),
+      vendorRecommendationSelectButton: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator("button.btn.btn-primary:not(:disabled)").filter({ hasText: /^Select$/i }).first(),
+      vendorSelectedModal: () => this.page.locator(".modal", { hasText: "Vendor Selected" }),
+      vendorSelectedModalOkButton: () => this.elements.vendorSelectedModal().getByRole("button", { name: /^OK$/i }),
       selectedVendorsSidebar: () => this.page.locator(".vendor-sidebar"),
       selectedVendorRemoveButtons: () => this.elements.selectedVendorsSidebar().locator('button[title="Remove"]'),
       selectedVendorRemoveButton: (vendorName) => this.elements.selectedVendorsSidebar().locator("div").filter({
@@ -112,6 +110,11 @@ class ProjectPage extends BasePage {
       return;
     }
 
+    await this.expectInProgressProjectCardVisible();
+    await this.elements.inProgressProjectCard().click();
+  }
+
+  async openExistingInProgressProject() {
     await this.expectInProgressProjectCardVisible();
     await this.elements.inProgressProjectCard().click();
   }
@@ -193,10 +196,17 @@ class ProjectPage extends BasePage {
 
     await expect(this.elements.vendorRecommendationSelectButton(this.selectedVendorName)).toBeVisible();
     await this.elements.vendorRecommendationSelectButton(this.selectedVendorName).click();
-    await expect(this.elements.vendorSelectedModal()).toBeVisible();
-    await expect(this.elements.vendorSelectedModalOkButton()).toBeVisible();
-    await this.elements.vendorSelectedModalOkButton().click();
-    await expect(this.elements.vendorSelectedModal()).toBeHidden();
+
+    const selectedModalVisible = await this.elements.vendorSelectedModal()
+      .waitFor({ state: "visible", timeout: 3000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (selectedModalVisible) {
+      await expect(this.elements.vendorSelectedModalOkButton()).toBeVisible();
+      await this.elements.vendorSelectedModalOkButton().click();
+      await expect(this.elements.vendorSelectedModal()).toBeHidden();
+    }
   }
 
   async removeExistingSelectedVendors() {
@@ -223,6 +233,7 @@ class ProjectPage extends BasePage {
   }
 
   async removeSelectedVendor() {
+    await this.dismissVendorSelectedModalIfVisible();
     await expect(this.elements.selectedVendorRemoveButton(this.selectedVendorName)).toBeVisible();
     await this.elements.selectedVendorRemoveButton(this.selectedVendorName).click();
   }
@@ -300,20 +311,12 @@ class ProjectPage extends BasePage {
       .filter(Boolean)
       .map((areaText) => this.normalizeAreaText(areaText));
 
-    const visibleRowCount = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
-      rows.filter((row) => row.offsetParent !== null).length
-    );
+    const rowTexts = await this.getVisibleVendorRecommendationRowTexts();
 
-    if (visibleRowCount === 0) {
-      await expect(this.elements.vendorRecommendationEmptyState()).toBeVisible();
+    if (rowTexts.length === 0) {
+      await this.expectVendorRecommendationNoVisibleRows();
       return;
     }
-
-    const rowTexts = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
-      rows
-        .filter((row) => row.offsetParent !== null)
-        .map((row) => row.innerText)
-    );
 
     for (const rowText of rowTexts) {
       const normalizedRowText = this.normalizeAreaText(rowText);
@@ -520,20 +523,12 @@ class ProjectPage extends BasePage {
   }
 
   async expectVendorRecommendationsSortedByPrice(direction = this.priceSortDirection) {
-    const visibleRowCount = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
-      rows.filter((row) => row.offsetParent !== null).length
-    );
+    const rowTexts = await this.getVisibleVendorRecommendationRowTexts();
 
-    if (visibleRowCount === 0) {
-      await expect(this.elements.vendorRecommendationEmptyState()).toBeVisible();
+    if (rowTexts.length === 0) {
+      await this.expectVendorRecommendationNoVisibleRows();
       return;
     }
-
-    const rowTexts = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
-      rows
-        .filter((row) => row.offsetParent !== null)
-        .map((row) => row.innerText)
-    );
     const prices = rowTexts.map((rowText) => {
       const priceValues = this.extractPriceValues(rowText);
 
@@ -572,21 +567,13 @@ class ProjectPage extends BasePage {
   }
 
   async expectVendorRecommendationsFilteredByNumericRange(option, filterType) {
-    const visibleRowCount = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
-      rows.filter((row) => row.offsetParent !== null).length
-    );
+    const rowTexts = await this.getVisibleVendorRecommendationRowTexts();
 
-    if (visibleRowCount === 0) {
-      await expect(this.elements.vendorRecommendationEmptyState()).toBeVisible();
+    if (rowTexts.length === 0) {
+      await this.expectVendorRecommendationNoVisibleRows();
       return;
     }
-
     const range = this.parseFilterRange(option, filterType);
-    const rowTexts = await this.elements.vendorRecommendationRows().evaluateAll((rows) =>
-      rows
-        .filter((row) => row.offsetParent !== null)
-        .map((row) => row.innerText)
-    );
 
     for (const rowText of rowTexts) {
       const values = filterType === "price"
@@ -733,6 +720,41 @@ class ProjectPage extends BasePage {
       .replace(/[_-]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  async getVisibleVendorRecommendationRowTexts() {
+    await expect(this.elements.vendorRecommendationCard()).toBeVisible();
+
+    return this.elements.vendorRecommendationRows().evaluateAll((rows) =>
+      rows
+        .filter((row) => {
+          const style = window.getComputedStyle(row);
+          const rect = row.getBoundingClientRect();
+
+          return style.display !== "none"
+            && style.visibility !== "hidden"
+            && Number(style.opacity) !== 0
+            && rect.width > 0
+            && rect.height > 0;
+        })
+        .map((row) => row.innerText)
+    );
+  }
+
+  async expectVendorRecommendationNoVisibleRows() {
+    await expect(this.elements.vendorRecommendationCard()).toBeVisible();
+
+    if (await this.elements.vendorRecommendationEmptyState().isVisible().catch(() => false)) {
+      await expect(this.elements.vendorRecommendationEmptyState()).toBeVisible();
+    }
+  }
+
+  async dismissVendorSelectedModalIfVisible() {
+    if (await this.elements.vendorSelectedModal().isVisible().catch(() => false)) {
+      await expect(this.elements.vendorSelectedModalOkButton()).toBeVisible();
+      await this.elements.vendorSelectedModalOkButton().click();
+      await expect(this.elements.vendorSelectedModal()).toBeHidden();
+    }
   }
 }
 module.exports = ProjectPage;

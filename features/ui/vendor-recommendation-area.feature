@@ -1,7 +1,7 @@
 @ui @project @vendor_recommendation_filter
 Feature: Project vendor recommendation filters
   Background:
-    Given I am on the project detail page using "credentials_login_valid.json"
+    Given I am on an existing project detail page using "credentials_login_valid.json"
 
   Scenario Outline: User able to filter vendor recommendations by area
     When I filter vendor recommendations by area "<area>"

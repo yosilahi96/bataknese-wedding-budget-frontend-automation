@@ -1,6 +1,26 @@
 const { Given, When, Then } = require("@cucumber/cucumber");
 const { getUser } = require("../support/credentials");
 
+async function loginToDashboard(world, credentialsFile) {
+  const user = getUser("validUser", credentialsFile);
+
+  await world.loginPage.open(world.frontendUrl("/login"));
+  await world.loginPage.login(user.email, user.password);
+  await world.dashboardPage.expectDashboardVisible();
+}
+
+async function openConfiguredProjectDetail(world) {
+  const projectDetailPath = process.env.PROJECT_DETAIL_PATH;
+
+  if (projectDetailPath) {
+    await world.basePage.goto(world.frontendUrl(projectDetailPath));
+  } else {
+    await world.projectPage.openExistingInProgressProject();
+  }
+
+  await world.projectPage.textGroomandBrideLabelVisible();
+}
+
 Given("I open the Bataknese wedding login page", async function () {
   await this.loginPage.open(this.frontendUrl("/login"));
 });
@@ -20,29 +40,18 @@ When("I login using {string}", async function (credentialsFile) {
 });
 
 Given("I am logged in using {string}", async function (credentialsFile) {
-  const user = getUser("validUser", credentialsFile);
-
-  await this.loginPage.open(this.frontendUrl("/login"));
-  await this.loginPage.login(user.email, user.password);
-  await this.dashboardPage.expectDashboardVisible();
+  await loginToDashboard(this, credentialsFile);
 });
 
 Given("I am on project overview using {string}", async function (credentialsFile) {
-  const user = getUser("validUser", credentialsFile);
-
-  await this.loginPage.open(this.frontendUrl("/login"));
-  await this.loginPage.login(user.email, user.password);
-  await this.dashboardPage.expectDashboardVisible();
+  await loginToDashboard(this, credentialsFile);
   await this.projectPage.openInProgressProject();
 });
 
 Given("I am on the project detail page using {string}", async function (credentialsFile) {
-  const user = getUser("validUser", credentialsFile);
   const projectDetailPath = process.env.PROJECT_DETAIL_PATH;
 
-  await this.loginPage.open(this.frontendUrl("/login"));
-  await this.loginPage.login(user.email, user.password);
-  await this.dashboardPage.expectDashboardVisible();
+  await loginToDashboard(this, credentialsFile);
 
   if (projectDetailPath) {
     await this.basePage.goto(this.frontendUrl(projectDetailPath));
@@ -51,6 +60,11 @@ Given("I am on the project detail page using {string}", async function (credenti
   }
 
   await this.projectPage.textGroomandBrideLabelVisible();
+});
+
+Given("I am on an existing project detail page using {string}", async function (credentialsFile) {
+  await loginToDashboard(this, credentialsFile);
+  await openConfiguredProjectDetail(this);
 });
 
 Then("I should see the dashboard", async function () {
