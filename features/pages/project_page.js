@@ -18,6 +18,28 @@ class ProjectPage extends BasePage {
       confirmEditProjectButton: () => this.page.locator('.modal .modal-actions button.btn.btn-primary'),
       newProjectButton: () => this.page.getByRole("button", { name: /New Project/i }),
       createProjectButton: () => this.page.getByRole("button", { name: "Create Project" }),
+      projectSearchInput: () => this.page.locator('input[type="search"]').first(),
+      projectCardByName: (projectName) => this.page.locator(".card.card-hover").filter({
+        hasText: projectName
+      }),
+      deleteProjectButton: () => this.page.locator("button.btn.btn-danger.btn-sm").filter({
+        hasText: /^Delete$/i
+      }).first(),
+      confirmDeleteProjectButton: () => this.page.locator(".modal:visible button.btn.btn-danger").filter({
+        hasText: /^Delete Project$/i
+      }),
+      finalizeProjectButton: () => this.page.locator("button.btn.btn-primary.btn-sm").filter({
+        hasText: /^Finalize$/i
+      }),
+      confirmFinalizeProjectButton: () => this.page.locator(".modal:visible button.btn.btn-primary").filter({
+        hasText: /^Finalize$/i
+      }),
+      finalizedProjectStatus: () => this.page.locator(".status-badge, .badge, span, div").filter({
+        hasText: /^Finalized$/i
+      }).first(),
+      projectFinalizedOkButton: () => this.page.locator(".modal:visible button.btn.btn-primary").filter({
+        hasText: /^OK$/i
+      }),
       categoryTableCard: () => this.page.locator(".card.table-card").filter({
         has: this.page.locator(".table-card-header .section-title", { hasText: "Pesta Adat - Categories" })
       }),
@@ -174,6 +196,40 @@ class ProjectPage extends BasePage {
     const weddingDate = new Date();
     weddingDate.setDate(weddingDate.getDate() + 30);
 
+    await this.createProject({
+      groomName: `Yosu${timestamp}`,
+      brideName: `Gaby${timestamp}`,
+      weddingDate: weddingDate.toISOString().slice(0, 10)
+    });
+  }
+
+  async createProjectForDeletion() {
+    await this.createTrackedProject("DeleteAuto");
+  }
+
+  async createProjectForFinalization() {
+    await this.createTrackedProject("FinishAuto");
+  }
+
+  async createTrackedProject(projectPrefix) {
+    const timestamp = Date.now();
+    const weddingDate = new Date();
+    weddingDate.setDate(weddingDate.getDate() + 45);
+    const groomName = `${projectPrefix}Groom${timestamp}`;
+    const brideName = `${projectPrefix}Bride${timestamp}`;
+
+    this.createdProjectSearchName = groomName;
+    this.createdProjectTitle = `${groomName} & ${brideName}`;
+
+    await this.createProject({
+      groomName,
+      brideName,
+      weddingDate: weddingDate.toISOString().slice(0, 10)
+    });
+    await this.expectCreatedProjectDetailVisible();
+  }
+
+  async createProject({ groomName, brideName, weddingDate }) {
     await expect(this.elements.newProjectButton()).toBeVisible();
     await this.elements.newProjectButton().click();
     const groomNameInput = this.page.locator('input[type="text"]').nth(0);
@@ -186,15 +242,15 @@ class ProjectPage extends BasePage {
     const eventTypeInput = this.page.locator('input[name="eventType"][value="PESTA_ADAT"]');
 
     await expect(groomNameInput).toBeVisible();
-    await groomNameInput.fill(`Yosu${timestamp}`);
+    await groomNameInput.fill(groomName);
     await expect(brideNameInput).toBeVisible();
-    await brideNameInput.fill(`Gaby${timestamp}`);
+    await brideNameInput.fill(brideName);
     await expect(citySelect).toBeVisible();
     await citySelect.selectOption({ label: "Jakarta Pusat" });
     await expect(addressInput).toBeVisible();
     await addressInput.fill("Jakarta Timur");
     await expect(weddingDateInput).toBeVisible();
-    await weddingDateInput.fill(weddingDate.toISOString().slice(0, 10));
+    await weddingDateInput.fill(weddingDate);
     await expect(budgetInput).toBeVisible();
     await budgetInput.fill("100000000");
     await expect(guestInput).toBeVisible();
@@ -204,7 +260,113 @@ class ProjectPage extends BasePage {
     await expect(this.elements.createProjectButton()).toBeVisible();
     await this.elements.createProjectButton().click();
     await this.page.waitForLoadState("domcontentloaded");
-    await this.page.waitForLoadState("networkidle").catch(() => undefined);
+    await this.waitForNetworkIdleBriefly();
+  }
+
+  async expectCreatedProjectDetailVisible() {
+    await expect(
+      this.elements.textGroomandBrideLabel(),
+      "Expected the app to navigate from the new project form to the created project detail page."
+    ).toContainText(this.createdProjectTitle, { timeout: 60000 });
+  }
+
+  async openProjectOverview() {
+    const backToProjectsButton = this.page.locator("button.btn.btn-ghost.btn-sm").filter({
+      hasText: /Back to Projects/i
+    }).first();
+
+    if (await backToProjectsButton.isVisible().catch(() => false)) {
+      await expect(backToProjectsButton).toBeVisible();
+      await backToProjectsButton.click();
+      await this.waitForNetworkIdleBriefly();
+    }
+
+    if (await this.elements.projectSearchInput().isVisible().catch(() => false)) {
+      await expect(this.elements.projectSearchInput()).toBeVisible();
+      return;
+    }
+
+    await this.page.goto(new URL("/", this.page.url()).toString(), { waitUntil: "domcontentloaded" });
+    await this.waitForNetworkIdleBriefly();
+    await expect(this.elements.projectSearchInput()).toBeVisible({ timeout: 60000 });
+  }
+
+  async waitForNetworkIdleBriefly() {
+    await this.page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
+  }
+
+  async deleteCreatedProject() {
+    if (!this.createdProjectSearchName) {
+      throw new Error("Expected a project to be created before deleting it.");
+    }
+
+    await expect(this.elements.textGroomandBrideLabel()).toBeVisible();
+    await expect(this.elements.textGroomandBrideLabel()).toContainText(this.createdProjectTitle);
+    await expect(this.elements.deleteProjectButton()).toBeVisible();
+    await this.elements.deleteProjectButton().click();
+    await expect(this.elements.confirmDeleteProjectButton()).toBeVisible();
+    await this.elements.confirmDeleteProjectButton().click();
+    await this.waitForNetworkIdleBriefly();
+  }
+
+  async expectCreatedProjectNotFoundInSearch() {
+    if (!this.createdProjectSearchName) {
+      throw new Error("Expected a project to be created before verifying search results.");
+    }
+
+    await this.page.goto(new URL("/", this.page.url()).toString(), {
+      waitUntil: "domcontentloaded",
+      timeout: 15000
+    });
+    await this.searchProjectList(this.createdProjectSearchName);
+    await this.page.waitForTimeout(1000);
+    expect(await this.elements.projectCardByName(this.createdProjectSearchName).count()).toBe(0);
+  }
+
+  async finalizeCreatedProject() {
+    if (!this.createdProjectSearchName) {
+      throw new Error("Expected a project to be created before finalizing it.");
+    }
+
+    await expect(this.elements.textGroomandBrideLabel()).toBeVisible();
+    await expect(this.elements.textGroomandBrideLabel()).toContainText(this.createdProjectTitle);
+    await expect(this.elements.finalizeProjectButton()).toBeVisible();
+    await this.elements.finalizeProjectButton().click();
+    await expect(this.elements.confirmFinalizeProjectButton()).toBeVisible();
+    await this.elements.confirmFinalizeProjectButton().click();
+    await expect(this.elements.finalizedProjectStatus()).toBeVisible();
+    await expect(this.elements.projectFinalizedOkButton()).toBeVisible();
+    await this.elements.projectFinalizedOkButton().click();
+  }
+
+  async expectCreatedProjectFinalizedInSearch() {
+    if (!this.createdProjectSearchName) {
+      throw new Error("Expected a project to be created before verifying search results.");
+    }
+
+    await this.openProjectOverview();
+    await this.searchProjectList(this.createdProjectSearchName);
+    await this.waitForNetworkIdleBriefly();
+
+    const projectCard = this.elements.projectCardByName(this.createdProjectSearchName).first();
+
+    await expect(projectCard).toBeVisible();
+    await expect(projectCard).toContainText(this.createdProjectTitle);
+    await expect(projectCard).toContainText("Finalized");
+    await projectCard.click();
+    await this.deleteCreatedProject();
+  }
+
+  async searchProjectList(projectName) {
+    await expect(this.elements.projectSearchInput()).toBeVisible({ timeout: 10000 });
+    await this.elements.projectSearchInput().evaluate((input, value) => {
+      const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+
+      valueSetter.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }, projectName);
+    await expect(this.elements.projectSearchInput()).toHaveValue(projectName, { timeout: 5000 });
   }
 
   async addRequiredCategory(categoryName, plannedBudget = "1000000") {

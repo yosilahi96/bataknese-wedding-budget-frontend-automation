@@ -9,6 +9,18 @@ Feature: Project
     Then I edit the project information
     And I verify the project information changes
 
+  @project_delete
+  Scenario: User able to delete a created project
+    When I create a project for deletion
+    And I delete the created project
+    Then I verify the created project is not found in the project list search
+
+  @project_finalize
+  Scenario: User able to finalize a created project
+    When I create a project for finalization
+    And I finalize the created project
+    Then I verify the created project status is finalized in the project list search
+
   @project_export
   Scenario Outline: User able to export project budget as <export_type>
     When I open an existing project detail page

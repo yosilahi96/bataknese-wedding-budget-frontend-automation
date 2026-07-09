@@ -40,6 +40,30 @@ Then("I verify the project information changes", async function(){
   await expect(projectTitle).toContainText(this.groomName);
 });
 
+When("I create a project for deletion", async function () {
+  await this.projectPage.createProjectForDeletion();
+});
+
+When("I delete the created project", async function () {
+  await this.projectPage.deleteCreatedProject();
+});
+
+Then("I verify the created project is not found in the project list search", async function () {
+  await this.projectPage.expectCreatedProjectNotFoundInSearch();
+});
+
+When("I create a project for finalization", async function () {
+  await this.projectPage.createProjectForFinalization();
+});
+
+When("I finalize the created project", async function () {
+  await this.projectPage.finalizeCreatedProject();
+});
+
+Then("I verify the created project status is finalized in the project list search", async function () {
+  await this.projectPage.expectCreatedProjectFinalizedInSearch();
+});
+
 When("I add a category with the required field", async function () {
   this.categoryName = `Automation Category ${Date.now()}`;
   await this.projectPage.addRequiredCategory(this.categoryName);
