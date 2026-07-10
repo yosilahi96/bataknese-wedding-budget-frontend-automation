@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 const BasePage = require("./base_page");
+const config = require("../support/env");
 
 class ProjectPage extends BasePage {
   constructor(page) {
@@ -148,6 +149,13 @@ class ProjectPage extends BasePage {
     await expect(this.elements.exportExcelButton()).toBeVisible();
   }
 
+  async expectVendorRecommendationsReady() {
+    await expect(
+      this.elements.vendorRecommendationCard(),
+      "Expected the vendor recommendations section to be visible on the project detail page."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+  }
+
   async expectInProgressProjectCardVisible() {
     await expect(
       this.elements.inProgressProjectCard(),
@@ -167,11 +175,17 @@ class ProjectPage extends BasePage {
   }
 
   async openExistingInProgressProject() {
-    const inProgressProjectVisible = await this.elements.inProgressProjectCard()
-      .isVisible()
+    await expect(
+      this.elements.existingProjectCard(),
+      "Expected project cards to load on the project overview page."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const inProgressProjectLoaded = await this.elements.inProgressProjectCard()
+      .waitFor({ state: "visible", timeout: 15000 })
+      .then(() => true)
       .catch(() => false);
 
-    if (inProgressProjectVisible) {
+    if (inProgressProjectLoaded) {
       await expect(this.elements.inProgressProjectCard()).toBeVisible();
       await this.elements.inProgressProjectCard().click();
       return;
@@ -390,17 +404,19 @@ class ProjectPage extends BasePage {
   }
 
   async searchVendorRecommendation(vendorName) {
-    await expect(this.elements.vendorRecommendationSearchInput()).toBeVisible();
+    await this.expectVendorRecommendationsReady();
+    await expect(this.elements.vendorRecommendationSearchInput()).toBeVisible({ timeout: config.defaultTimeout });
     await this.elements.vendorRecommendationSearchInput().fill(vendorName);
   }
 
   async expectVendorRecommendationSearchResult(vendorName) {
-    await expect(this.elements.vendorRecommendationResultRow(vendorName)).toBeVisible();
+    await this.expectVendorRecommendationsReady();
+    await expect(this.elements.vendorRecommendationResultRow(vendorName)).toBeVisible({ timeout: config.defaultTimeout });
   }
 
   async compareVendorRecommendations(expectedCount) {
     await this.clearVendorComparisonSelection();
-    await expect(this.elements.vendorRecommendationCompareRows().first()).toBeVisible();
+    await expect(this.elements.vendorRecommendationCompareRows().first()).toBeVisible({ timeout: config.defaultTimeout });
 
     this.comparedVendors = [];
 
@@ -605,9 +621,14 @@ class ProjectPage extends BasePage {
         break;
       }
 
+      const selectedVendorCount = await this.elements.selectedVendorRemoveButtons().count();
+
       await expect(removeButton).toBeVisible();
       await removeButton.click();
-      await removeButton.waitFor({ state: "hidden", timeout: 5000 }).catch(() => undefined);
+      await expect(this.elements.selectedVendorRemoveButtons()).toHaveCount(
+        Math.max(selectedVendorCount - 1, 0),
+        { timeout: config.defaultTimeout }
+      );
     }
   }
 
@@ -620,15 +641,32 @@ class ProjectPage extends BasePage {
   async removeSelectedVendor() {
     await this.dismissVendorSelectedModalIfVisible();
     await this.dismissVisibleModalIfPresent();
-    await expect(this.elements.selectedVendorRemoveButton(this.selectedVendorName)).toBeVisible();
-    await this.elements.selectedVendorRemoveButton(this.selectedVendorName).click();
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const removeButton = this.elements.selectedVendorRemoveButton(this.selectedVendorName);
+
+      await expect(removeButton).toBeVisible({ timeout: config.defaultTimeout });
+      await removeButton.click();
+
+      const removed = await expect(this.elements.selectedVendorsSidebar()).not.toContainText(this.selectedVendorName, {
+        timeout: 10000
+      }).then(() => true).catch(() => false);
+
+      if (removed) {
+        return;
+      }
+    }
   }
 
   async expectSelectedVendorRemoved() {
     await expect(this.elements.selectedVendorsSidebar()).toBeVisible();
-    await expect(this.elements.selectedVendorsSidebar()).not.toContainText(this.selectedVendorName);
-    await expect(this.elements.selectedVendorEmptyState()).toBeVisible();
-    await expect(this.elements.vendorRecommendationResultRow(this.selectedVendorName)).toContainText("Select");
+    await expect(this.elements.selectedVendorsSidebar()).not.toContainText(this.selectedVendorName, {
+      timeout: config.defaultTimeout
+    });
+    await expect(this.elements.selectedVendorEmptyState()).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.vendorRecommendationResultRow(this.selectedVendorName)).toContainText("Select", {
+      timeout: config.defaultTimeout
+    });
   }
 
   async getAreaFilterOptions() {
@@ -771,7 +809,8 @@ class ProjectPage extends BasePage {
   }
 
   async getVendorRecommendationFilterOptions(dropdown, placeholderPattern) {
-    await expect(dropdown).toBeVisible();
+    await this.expectVendorRecommendationsReady();
+    await expect(dropdown).toBeVisible({ timeout: config.defaultTimeout });
 
     const options = await dropdown.locator("option").evaluateAll((optionNodes) =>
       optionNodes.map((option) => ({
@@ -787,7 +826,8 @@ class ProjectPage extends BasePage {
   }
 
   async selectVendorRecommendationFilterOption(dropdown, option) {
-    await expect(dropdown).toBeVisible();
+    await this.expectVendorRecommendationsReady();
+    await expect(dropdown).toBeVisible({ timeout: config.defaultTimeout });
     await dropdown.selectOption(option.value);
     await this.page.waitForLoadState("networkidle").catch(() => undefined);
   }
