@@ -191,8 +191,10 @@ class ProjectPage extends BasePage {
       return;
     }
 
-    await this.expectExistingProjectCardVisible();
-    await this.elements.existingProjectCard().click();
+    // Finalized projects do not expose vendor recommendations. Never fall back to
+    // the first arbitrary card because production may contain only finalized data.
+    // Create an isolated in-progress project so vendor scenarios remain eligible.
+    await this.createInProgressProject();
   }
 
   async createAndOpenNewInProgressProject() {
@@ -333,8 +335,10 @@ class ProjectPage extends BasePage {
       timeout: 15000
     });
     await this.searchProjectList(this.createdProjectSearchName);
-    await this.page.waitForTimeout(1000);
-    expect(await this.elements.projectCardByName(this.createdProjectSearchName).count()).toBe(0);
+    await expect(
+      this.elements.projectCardByName(this.createdProjectSearchName),
+      `Expected deleted project "${this.createdProjectSearchName}" to disappear from the project list.`
+    ).toHaveCount(0, { timeout: config.defaultTimeout });
   }
 
   async finalizeCreatedProject() {
