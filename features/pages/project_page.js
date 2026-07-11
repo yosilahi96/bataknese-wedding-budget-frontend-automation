@@ -330,15 +330,21 @@ class ProjectPage extends BasePage {
       throw new Error("Expected a project to be created before verifying search results.");
     }
 
-    await this.page.goto(new URL("/", this.page.url()).toString(), {
-      waitUntil: "domcontentloaded",
-      timeout: 15000
-    });
-    await this.searchProjectList(this.createdProjectSearchName);
-    await expect(
-      this.elements.projectCardByName(this.createdProjectSearchName),
-      `Expected deleted project "${this.createdProjectSearchName}" to disappear from the project list.`
-    ).toHaveCount(0, { timeout: config.defaultTimeout });
+    const projectOverviewUrl = new URL("/", this.page.url()).toString();
+
+    await expect.poll(async () => {
+      await this.page.goto(projectOverviewUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: 15000
+      });
+      await this.searchProjectList(this.createdProjectSearchName);
+
+      return this.elements.projectCardByName(this.createdProjectSearchName).count();
+    }, {
+      message: `Expected deleted project "${this.createdProjectSearchName}" to disappear after refreshing the project list.`,
+      timeout: Math.min(config.defaultTimeout - 10000, 45000),
+      intervals: [1000, 2000, 3000, 5000]
+    }).toBe(0);
   }
 
   async finalizeCreatedProject() {
