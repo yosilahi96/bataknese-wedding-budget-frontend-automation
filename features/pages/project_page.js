@@ -124,7 +124,9 @@ class ProjectPage extends BasePage {
       inProgressProjectCard: () => this.page
         .locator('.card, .card-hover, [class*="card"]')
         .filter({ has: this.page.getByText(/^In Progress$/i) })
-        .first()
+        .first(),
+      previousPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Previous$/i }),
+      nextPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Next$/i })
     };
   }
 
@@ -1374,6 +1376,21 @@ class ProjectPage extends BasePage {
     }
 
     return entries;
+  }
+
+  async goToLatestPage() {
+    let clickCount = 0;
+    while (clickCount < 100) {
+      const nextBtn = this.elements.nextPageButton();
+      await expect(nextBtn).toBeVisible();
+      const isDisabled = await nextBtn.getAttribute("disabled") !== null;
+      if (isDisabled) {
+        break;
+      }
+      await nextBtn.click();
+      clickCount++;
+      await this.waitForNetworkIdleBriefly();
+    }
   }
 }
 module.exports = ProjectPage;
