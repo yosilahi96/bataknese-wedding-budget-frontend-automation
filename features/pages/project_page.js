@@ -48,10 +48,13 @@ class ProjectPage extends BasePage {
       projectFinalizedOkButton: () => this.page.locator(".modal:visible button.btn.btn-primary").filter({
         hasText: /^OK$/i
       }),
+      // Works for both "Pesta Adat - Categories" and "3M Ceremony - Categories"
       categoryTableCard: () => this.page.locator(".card.table-card").filter({
-        has: this.page.locator(".table-card-header .section-title", { hasText: "Pesta Adat - Categories" })
+        has: this.page.locator(".table-card-header .section-title").filter({ hasText: /Categories/i })
+      }).first(),
+      addCategoryButton: () => this.elements.categoryTableCard().locator(".table-card-header button.btn.btn-primary").filter({
+        hasText: /Add Category/i
       }),
-      addCategoryButton: () => this.elements.categoryTableCard().locator(".table-card-header button.btn.btn-primary"),
       categoryModal: () => this.page.locator(".modal").filter({
         has: this.page.locator("h3", { hasText: "Add Category" })
       }),
@@ -464,23 +467,28 @@ class ProjectPage extends BasePage {
   }
 
   async addRequiredCategory(categoryName, plannedBudget = "1000000") {
-    await expect(this.elements.addCategoryButton()).toBeVisible();
+    await expect(
+      this.elements.categoryTableCard(),
+      "Expected a categories table card on the project detail page (Pesta Adat or 3M Ceremony)."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.addCategoryButton()).toBeVisible({ timeout: config.defaultTimeout });
     await this.elements.addCategoryButton().click();
-    await expect(this.elements.categoryModal()).toBeVisible();
+    await expect(this.elements.categoryModal()).toBeVisible({ timeout: config.defaultTimeout });
     await expect(this.elements.categoryNameInput()).toBeVisible();
     await this.elements.categoryNameInput().fill(categoryName);
     await expect(this.elements.categoryPlannedBudgetInput()).toBeVisible();
     await this.elements.categoryPlannedBudgetInput().fill(plannedBudget);
     await expect(this.elements.saveCategoryButton()).toBeVisible();
     await this.elements.saveCategoryButton().click();
-    await expect(this.elements.categorySuccessModal()).toBeVisible();
+    await expect(this.elements.categorySuccessModal()).toBeVisible({ timeout: config.defaultTimeout });
     await expect(this.elements.categorySuccessOkButton()).toBeVisible();
     await this.elements.categorySuccessOkButton().click();
     await expect(this.elements.categorySuccessModal()).toBeHidden();
   }
 
   async expectCategoryVisible(categoryName) {
-    await expect(this.elements.categoryRow(categoryName)).toBeVisible();
+    await expect(this.elements.categoryTableCard()).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.categoryRow(categoryName)).toBeVisible({ timeout: config.defaultTimeout });
   }
 
   async searchVendorRecommendation(vendorName) {
