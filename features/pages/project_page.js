@@ -19,6 +19,13 @@ class ProjectPage extends BasePage {
       confirmEditProjectButton: () => this.page.locator('.modal .modal-actions button.btn.btn-primary'),
       newProjectButton: () => this.page.getByRole("button", { name: /New Project/i }),
       createProjectButton: () => this.page.getByRole("button", { name: "Create Project" }),
+      eventTypeRadio: (eventTypeValue) => this.page.locator(`input[name="eventType"][value="${eventTypeValue}"]`),
+      projectTypeStatLabel: (typePattern) => this.page.locator(".stat-card .stat-label").filter({
+        hasText: typePattern
+      }).first(),
+      projectTypeSectionTitle: (typeLabel) => this.page.locator("h3.section-title").filter({
+        hasText: typeLabel
+      }).first(),
       projectSearchInput: () => this.page.locator('input[type="search"]').first(),
       projectCardByName: (projectName) => this.page.locator(".card.card-hover").filter({
         hasText: projectName
@@ -229,7 +236,7 @@ class ProjectPage extends BasePage {
     await this.createTrackedProject("FinishAuto");
   }
 
-  async createTrackedProject(projectPrefix) {
+  async createTrackedProject(projectPrefix, eventTypeLabel = "Pesta Adat") {
     const timestamp = Date.now();
     const weddingDate = new Date();
     weddingDate.setDate(weddingDate.getDate() + 45);
@@ -238,17 +245,52 @@ class ProjectPage extends BasePage {
 
     this.createdProjectSearchName = groomName;
     this.createdProjectTitle = `${groomName} & ${brideName}`;
+    this.createdProjectType = eventTypeLabel;
 
     await this.createProject({
       groomName,
       brideName,
-      weddingDate: weddingDate.toISOString().slice(0, 10)
+      weddingDate: weddingDate.toISOString().slice(0, 10),
+      eventType: this.resolveEventTypeValue(eventTypeLabel)
     });
     await this.expectCreatedProjectDetailVisible();
   }
 
-  async createProject({ groomName, brideName, weddingDate }) {
-    await expect(this.elements.newProjectButton()).toBeVisible();
+  async createProjectWithType(eventTypeLabel) {
+    await this.createTrackedProject("TypeAuto", eventTypeLabel);
+  }
+
+  resolveEventTypeValue(eventTypeLabel) {
+    const normalized = String(eventTypeLabel).trim().toLowerCase().replace(/\s+/g, " ");
+
+    if (normalized === "3m" || normalized === "3m ceremony" || normalized === "three_m" || normalized === "three m") {
+      return "THREE_M";
+    }
+
+    if (normalized === "pesta adat" || normalized === "pesta_adat") {
+      return "PESTA_ADAT";
+    }
+
+    throw new Error(
+      `Unsupported project type "${eventTypeLabel}". Use "3M" or "Pesta Adat".`
+    );
+  }
+
+  getProjectTypeDisplayPattern(eventTypeLabel) {
+    const eventTypeValue = this.resolveEventTypeValue(eventTypeLabel);
+
+    if (eventTypeValue === "THREE_M") {
+      return /3M(\s*Ceremony)?/i;
+    }
+
+    return /Pesta\s*Adat/i;
+  }
+
+  async createProject({ groomName, brideName, weddingDate, eventType = "PESTA_ADAT" }) {
+    await expect(
+      this.elements.newProjectButton(),
+      "Expected the New Project button to be visible on the project overview page."
+    ).toBeVisible({ timeout: config.defaultTimeout });
     await this.elements.newProjectButton().click();
     const groomNameInput = this.page.locator('input[type="text"]').nth(0);
     const brideNameInput = this.page.locator('input[type="text"]').nth(1);
@@ -257,9 +299,9 @@ class ProjectPage extends BasePage {
     const weddingDateInput = this.page.locator('input[type="date"]');
     const budgetInput = this.page.locator('input[type="text"]').nth(3);
     const guestInput = this.page.locator('input[type="number"]');
-    const eventTypeInput = this.page.locator('input[name="eventType"][value="PESTA_ADAT"]');
+    const eventTypeInput = this.elements.eventTypeRadio(eventType);
 
-    await expect(groomNameInput).toBeVisible();
+    await expect(groomNameInput).toBeVisible({ timeout: config.defaultTimeout });
     await groomNameInput.fill(groomName);
     await expect(brideNameInput).toBeVisible();
     await brideNameInput.fill(brideName);
@@ -273,12 +315,38 @@ class ProjectPage extends BasePage {
     await budgetInput.fill("100000000");
     await expect(guestInput).toBeVisible();
     await guestInput.fill("100");
-    await expect(eventTypeInput).toBeVisible();
+    await expect(eventTypeInput).toBeVisible({ timeout: config.defaultTimeout });
     await eventTypeInput.check();
+    await expect(eventTypeInput).toBeChecked();
     await expect(this.elements.createProjectButton()).toBeVisible();
     await this.elements.createProjectButton().click();
     await this.page.waitForLoadState("domcontentloaded");
     await this.waitForNetworkIdleBriefly();
+  }
+
+  async expectProjectType(eventTypeLabel) {
+    const displayPattern = this.getProjectTypeDisplayPattern(eventTypeLabel);
+    const projectTypeLabel = this.elements.projectTypeStatLabel(displayPattern);
+
+    await expect(
+      this.elements.textGroomandBrideLabel(),
+      "Expected project detail page to be visible before verifying project type."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(
+      projectTypeLabel,
+      `Expected project type label "${eventTypeLabel}" to be visible on the project detail page.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(projectTypeLabel).toHaveText(displayPattern);
+
+    if (this.resolveEventTypeValue(eventTypeLabel) === "THREE_M") {
+      await expect(this.elements.projectTypeStatLabel(/Pesta\s*Adat/i)).toHaveCount(0);
+      await expect(
+        this.elements.projectTypeSectionTitle(/3M Ceremony/i)
+      ).toBeVisible({ timeout: config.defaultTimeout });
+      await expect(
+        this.page.locator("h3.section-title").filter({ hasText: /Pesta\s*Adat/i })
+      ).toHaveCount(0);
+    }
   }
 
   async expectCreatedProjectDetailVisible() {

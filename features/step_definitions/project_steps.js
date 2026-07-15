@@ -40,6 +40,14 @@ Then("I verify the project information changes", async function(){
   await expect(projectTitle).toContainText(this.groomName);
 });
 
+When("I create a project with type {string}", async function (eventTypeLabel) {
+  await this.projectPage.createProjectWithType(eventTypeLabel);
+});
+
+Then("I verify the project type is {string}", async function (eventTypeLabel) {
+  await this.projectPage.expectProjectType(eventTypeLabel);
+});
+
 When("I create a project for deletion", async function () {
   await this.projectPage.createProjectForDeletion();
 });
