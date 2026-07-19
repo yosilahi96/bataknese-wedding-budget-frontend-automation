@@ -27,6 +27,9 @@ This suite runs against a **production / production-like** frontend. Prefer safe
 }
 ```
 
+- In CI (Jenkins), when those files are absent, credentials may come from env:
+  - `LOGIN_VALID_EMAIL` / `LOGIN_VALID_PASSWORD` (required for authenticated scenarios)
+  - `LOGIN_INVALID_EMAIL` / `LOGIN_INVALID_PASSWORD` (optional; defaults to non-secret placeholders)
 - Use env vars from `.env` (from `.env.example`) for `BASE_FE_URL` and related settings. Never hardcode environment-specific URLs into features when a relative path or existing step will do.
 
 ## Stack and layout

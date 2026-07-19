@@ -131,12 +131,22 @@ Copy `.env.example` to `.env` and adjust values for local execution. Do not comm
 | `SCREENSHOT` | `only-on-failure` | Screenshot mode: `on`, `off`, or `only-on-failure`. |
 | `VIDEO` | `off` | Video mode: `on`, `off`, or `retain-on-failure`. |
 | `TRACE` | `retain-on-failure` | Trace mode: `on`, `off`, or `retain-on-failure`. |
+| `LOGIN_VALID_EMAIL` | _(empty)_ | CI fallback for valid login when `config/credentials_login_valid.json` is missing. |
+| `LOGIN_VALID_PASSWORD` | _(empty)_ | CI fallback for valid login password. |
+| `LOGIN_INVALID_EMAIL` | `invalid@example.com` | CI fallback for invalid login email. |
+| `LOGIN_INVALID_PASSWORD` | `invalid-password` | CI fallback for invalid login password. |
 
-Configuration is loaded in `features/support/env.js` via `dotenv`.
+Configuration is loaded in `features/support/env.js` via `dotenv`. Credential env fallbacks are resolved in `features/support/credentials.js`.
 
 ## Credentials
 
-Credentials are loaded from JSON files in `config/` by `features/support/credentials.js`. Each user entry must include `email` and `password`.
+Credentials are loaded by `features/support/credentials.js` in this order:
+
+1. Local JSON under `config/` (preferred for local runs)
+2. Environment variables (used by Jenkins / CI when files are absent)
+3. For **invalid** login only: built-in non-secret placeholders
+
+Each user entry must include `email` and `password`.
 
 **Do not put real passwords, tokens, or production secrets in the README, feature files, or committed examples.** Keep real credential files local. Prefer gitignoring anything that holds live accounts.
 
@@ -173,6 +183,27 @@ Copy-Item config/credentials_login_invalid.example.json config/credentials_login
 ```
 
 `config/credentials.json` is also supported as the default file name when a step does not pass a file name. All live credential JSON files matching `config/credentials_*.json` are gitignored (examples remain tracked).
+
+### CI credentials (Jenkins)
+
+Credential JSON files are **not** committed. Jenkins must supply a valid login via a **Username with password** credential:
+
+| Item | Value |
+| --- | --- |
+| Credential ID | `fe-automation-login-valid` (override with `FE_LOGIN_CREDENTIALS_ID`) |
+| Username | App login email |
+| Password | App login password |
+
+The pipeline binds these to `LOGIN_VALID_EMAIL` / `LOGIN_VALID_PASSWORD`, then runs `npm run prepare:credentials` before tests.
+
+| Variable | Purpose |
+| --- | --- |
+| `LOGIN_VALID_EMAIL` | Valid user email (required in CI) |
+| `LOGIN_VALID_PASSWORD` | Valid user password (required in CI) |
+| `LOGIN_INVALID_EMAIL` | Optional; defaults to `invalid@example.com` |
+| `LOGIN_INVALID_PASSWORD` | Optional; defaults to `invalid-password` |
+
+Aliases `VALID_USER_EMAIL` / `VALID_USER_PASSWORD` (and the invalid counterparts) are also accepted.
 
 ## Project Structure
 

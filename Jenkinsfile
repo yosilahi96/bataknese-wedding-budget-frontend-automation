@@ -25,6 +25,9 @@ pipeline {
         SCREENSHOT = 'only-on-failure'
         VIDEO = 'off'
         TRACE = 'retain-on-failure'
+        // Jenkins "Username with password" credential ID for a valid app login.
+        // Create it under Manage Jenkins → Credentials (or folder credentials).
+        FE_LOGIN_CREDENTIALS_ID = 'fe-automation-login-valid'
     }
 
     stages {
@@ -46,7 +49,16 @@ pipeline {
                 expression { return params.RUN_SMOKE_ONLY == true }
             }
             steps {
-                sh 'npm run test:smoke'
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${env.FE_LOGIN_CREDENTIALS_ID}",
+                        usernameVariable: 'LOGIN_VALID_EMAIL',
+                        passwordVariable: 'LOGIN_VALID_PASSWORD'
+                    )
+                ]) {
+                    sh 'node scripts/prepare-credentials.js'
+                    sh 'npm run test:smoke'
+                }
             }
         }
 
@@ -55,7 +67,16 @@ pipeline {
                 expression { return params.RUN_SMOKE_ONLY != true }
             }
             steps {
-                sh 'npm run test:ui'
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${env.FE_LOGIN_CREDENTIALS_ID}",
+                        usernameVariable: 'LOGIN_VALID_EMAIL',
+                        passwordVariable: 'LOGIN_VALID_PASSWORD'
+                    )
+                ]) {
+                    sh 'node scripts/prepare-credentials.js'
+                    sh 'npm run test:ui'
+                }
             }
         }
     }

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "clean:results": "node scripts/clean-results.js",
+    "prepare:credentials": "node scripts/prepare-credentials.js",
     "test": "npm run clean:results && cucumber-js",
     "test:ui": "npm run clean:results && cucumber-js --profile ui",
     "test:smoke": "npm run clean:results && cucumber-js --profile smoke",
