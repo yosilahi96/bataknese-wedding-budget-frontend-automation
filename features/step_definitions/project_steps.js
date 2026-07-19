@@ -81,6 +81,43 @@ Then("I verify the category was made on the list", async function () {
   await this.projectPage.expectCategoryVisible(this.categoryName);
 });
 
+When("I delete the created category", async function () {
+  if (!this.categoryName) {
+    throw new Error('Expected a category from "I add a category with the required field" before deleting.');
+  }
+  await this.projectPage.deleteCategory(this.categoryName);
+});
+
+Then("I verify the category has been deleted", async function () {
+  if (!this.categoryName) {
+    throw new Error("Expected a category name before verifying deletion.");
+  }
+  await this.projectPage.expectCategoryNotVisible(this.categoryName);
+});
+
+When(
+  "I edit the created category with planned budget {string} and actual cost {string}",
+  async function (plannedBudget, actualCost) {
+    if (!this.categoryName) {
+      throw new Error(
+        'Expected a category from "I add a category with the required field" before editing.'
+      );
+    }
+    await this.projectPage.editCategoryBudgets(
+      this.categoryName,
+      plannedBudget,
+      actualCost
+    );
+  }
+);
+
+Then("I verify the category budget diff is correct", async function () {
+  if (!this.categoryName) {
+    throw new Error("Expected a category name before verifying budget diff.");
+  }
+  await this.projectPage.expectCategoryBudgetDiff(this.categoryName);
+});
+
 When("I search vendor recommendation {string}", async function (vendorName) {
   this.vendorRecommendationName = vendorName;
   await this.projectPage.searchVendorRecommendation(vendorName);
@@ -176,6 +213,10 @@ When("I select a vendor recommendation", async function () {
 
 Then("I verify the vendor has been selected", async function () {
   await this.projectPage.expectSelectedVendorVisible();
+});
+
+Then("I verify the selected vendor cannot be selected again", async function () {
+  await this.projectPage.expectSelectedVendorCannotBeSelectedAgain();
 });
 
 When("I remove the selected vendor", async function () {

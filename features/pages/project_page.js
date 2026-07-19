@@ -56,18 +56,35 @@ class ProjectPage extends BasePage {
         hasText: /Add Category/i
       }),
       categoryModal: () => this.page.locator(".modal").filter({
-        has: this.page.locator("h3", { hasText: "Add Category" })
+        has: this.page.locator("h3", { hasText: /Add Category|Tambah Kategori/i })
       }),
-      categoryNameInput: () => this.elements.categoryModal().locator('input[required][placeholder="Search or type category name..."]'),
-      categoryPlannedBudgetInput: () => this.elements.categoryModal().locator('input[placeholder="e.g. 50.000.000"]'),
+      editCategoryModal: () => this.page.locator(".modal").filter({
+        has: this.page.locator("h3", { hasText: /Edit Category|Edit Kategori/i })
+      }),
+      categoryNameInput: () => this.elements.categoryModal().locator('input[type="text"]').first(),
+      categoryPlannedBudgetInput: () => this.elements.categoryModal().locator('input[placeholder*="50.000.000"], input[placeholder*="50.000"]').first(),
+      editCategoryPlannedBudgetInput: () => this.elements.editCategoryModal().locator('input[placeholder*="50.000.000"], input[placeholder*="50.000"]').first(),
+      editCategoryActualCostInput: () => this.elements.editCategoryModal().locator('input[placeholder*="45.000.000"], input[placeholder*="45.000"]').first(),
       saveCategoryButton: () => this.elements.categoryModal().locator('button[type="submit"].btn.btn-primary'),
+      saveEditCategoryButton: () => this.elements.editCategoryModal().locator('button[type="submit"].btn.btn-primary'),
       categorySuccessModal: () => this.page.locator(".modal").filter({
-        has: this.page.locator("h3", { hasText: "Category Added" })
+        has: this.page.locator("h3", { hasText: /Category Added|Kategori Ditambahkan/i })
       }),
       categorySuccessOkButton: () => this.elements.categorySuccessModal().locator("button.btn.btn-primary"),
+      categoryUpdatedModal: () => this.page.locator(".modal").filter({
+        has: this.page.locator("h3", { hasText: /Category Updated|Kategori Diperbarui/i })
+      }),
+      categoryUpdatedOkButton: () => this.elements.categoryUpdatedModal().locator("button.btn.btn-primary"),
       categoryRow: (categoryName) => this.elements.categoryTableCard().locator("tbody tr").filter({
         has: this.page.locator("td").filter({ hasText: categoryName })
       }),
+      confirmDeleteCategoryButton: () => this.page.locator(".modal:visible button.btn.btn-danger").filter({
+        hasText: /^(Delete|Hapus)$/i
+      }),
+      categoryDeletedModal: () => this.page.locator(".modal").filter({
+        has: this.page.locator("h3", { hasText: /Category Deleted|Kategori Dihapus/i })
+      }),
+      categoryDeletedOkButton: () => this.elements.categoryDeletedModal().locator("button.btn.btn-primary"),
       vendorRecommendationCard: () => this.page.locator(".vendor-layout .card").filter({
         has: this.page.locator("h3", { hasText: "Vendor Recommendations" })
       }),
@@ -95,6 +112,12 @@ class ProjectPage extends BasePage {
         has: this.page.locator("td").filter({ hasText: vendorName })
       }),
       vendorRecommendationSelectButton: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator("button.btn.btn-primary:not(:disabled)").filter({ hasText: /^Select$/i }).first(),
+      vendorRecommendationSelectedBadge: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator(".badge").filter({
+        hasText: /^Selected$/i
+      }),
+      vendorRecommendationAnySelectButton: (vendorName) => this.elements.vendorRecommendationResultRow(vendorName).locator("button").filter({
+        hasText: /^Select$/i
+      }),
       vendorRecommendationCompareRows: () => this.elements.vendorRecommendationRows().filter({
         has: this.page.locator("button").filter({ hasText: /^Compare$/i })
       }),
@@ -543,9 +566,9 @@ class ProjectPage extends BasePage {
     await expect(this.elements.addCategoryButton()).toBeVisible({ timeout: config.defaultTimeout });
     await this.elements.addCategoryButton().click();
     await expect(this.elements.categoryModal()).toBeVisible({ timeout: config.defaultTimeout });
-    await expect(this.elements.categoryNameInput()).toBeVisible();
+    await expect(this.elements.categoryNameInput()).toBeVisible({ timeout: config.defaultTimeout });
     await this.elements.categoryNameInput().fill(categoryName);
-    await expect(this.elements.categoryPlannedBudgetInput()).toBeVisible();
+    await expect(this.elements.categoryPlannedBudgetInput()).toBeVisible({ timeout: config.defaultTimeout });
     await this.elements.categoryPlannedBudgetInput().fill(plannedBudget);
     await expect(this.elements.saveCategoryButton()).toBeVisible();
     await this.elements.saveCategoryButton().click();
@@ -558,6 +581,182 @@ class ProjectPage extends BasePage {
   async expectCategoryVisible(categoryName) {
     await expect(this.elements.categoryTableCard()).toBeVisible({ timeout: config.defaultTimeout });
     await expect(this.elements.categoryRow(categoryName)).toBeVisible({ timeout: config.defaultTimeout });
+  }
+
+  async deleteCategory(categoryName) {
+    if (!categoryName) {
+      throw new Error("Expected a category name before deleting it.");
+    }
+
+    await expect(
+      this.elements.categoryTableCard(),
+      "Expected a categories table card before deleting a category."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(
+      this.elements.categoryRow(categoryName),
+      `Expected category "${categoryName}" to be visible before delete.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const deleteButton = this.elements.categoryRow(categoryName).locator('button[title="Delete"], button[title="Hapus"]').first();
+    await expect(
+      deleteButton,
+      `Expected a Delete action on the category row for "${categoryName}".`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await deleteButton.click();
+
+    await expect(
+      this.page.locator(".modal:visible").filter({
+        has: this.page.locator("h3", { hasText: /Delete Category|Hapus Kategori/i })
+      }),
+      "Expected the delete category confirmation modal."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.confirmDeleteCategoryButton()).toBeVisible();
+    await this.elements.confirmDeleteCategoryButton().click();
+
+    // Success alert is optional depending on timing; always wait for the row to leave.
+    const deletedModal = this.elements.categoryDeletedModal();
+    if (await deletedModal.isVisible({ timeout: 10000 }).catch(() => false)) {
+      await expect(this.elements.categoryDeletedOkButton()).toBeVisible();
+      await this.elements.categoryDeletedOkButton().click();
+      await expect(deletedModal).toBeHidden({ timeout: config.defaultTimeout });
+    }
+
+    await this.dismissVisibleModalIfPresent();
+  }
+
+  async expectCategoryNotVisible(categoryName) {
+    if (!categoryName) {
+      throw new Error("Expected a category name before verifying it was deleted.");
+    }
+
+    await expect(
+      this.elements.categoryTableCard(),
+      "Expected a categories table card when verifying category deletion."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    await expect
+      .poll(async () => this.elements.categoryRow(categoryName).count(), {
+        message: `Expected deleted category "${categoryName}" to disappear from the categories list.`,
+        timeout: config.defaultTimeout,
+        intervals: [500, 1000, 2000]
+      })
+      .toBe(0);
+  }
+
+  /**
+   * Edit an existing category's planned budget and actual cost, then save.
+   * Diff on the list is planned - actual (shown with a leading + when non-negative).
+   */
+  async editCategoryBudgets(categoryName, plannedBudget, actualCost) {
+    if (!categoryName) {
+      throw new Error("Expected a category name before editing it.");
+    }
+
+    const planned = Number(String(plannedBudget).replace(/\D/g, ""));
+    const actual = Number(String(actualCost).replace(/\D/g, ""));
+
+    if (!Number.isFinite(planned) || !Number.isFinite(actual)) {
+      throw new Error(`Invalid budget values planned="${plannedBudget}" actual="${actualCost}".`);
+    }
+
+    if (planned <= actual) {
+      throw new Error(
+        `This scenario requires planned budget > actual cost. Received planned=${planned}, actual=${actual}.`
+      );
+    }
+
+    this.categoryPlannedBudget = planned;
+    this.categoryActualCost = actual;
+    this.categoryExpectedDiff = planned - actual;
+
+    await expect(
+      this.elements.categoryRow(categoryName),
+      `Expected category "${categoryName}" to be visible before editing.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const editButton = this.elements
+      .categoryRow(categoryName)
+      .locator('button[title="Edit"], button[title="Ubah"]')
+      .first();
+    await expect(
+      editButton,
+      `Expected an Edit action on the category row for "${categoryName}".`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await editButton.click();
+
+    await expect(
+      this.elements.editCategoryModal(),
+      "Expected the edit category modal to open."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.editCategoryPlannedBudgetInput()).toBeVisible({
+      timeout: config.defaultTimeout
+    });
+    await expect(this.elements.editCategoryActualCostInput()).toBeVisible({
+      timeout: config.defaultTimeout
+    });
+
+    await this.elements.editCategoryPlannedBudgetInput().fill(String(planned));
+    await this.elements.editCategoryActualCostInput().fill(String(actual));
+    await expect(this.elements.saveEditCategoryButton()).toBeVisible();
+    await this.elements.saveEditCategoryButton().click();
+
+    const updatedModal = this.elements.categoryUpdatedModal();
+    await expect(
+      updatedModal,
+      "Expected Category Updated confirmation after saving the category."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.categoryUpdatedOkButton()).toBeVisible();
+    await this.elements.categoryUpdatedOkButton().click();
+    await expect(updatedModal).toBeHidden({ timeout: config.defaultTimeout });
+    await this.dismissVisibleModalIfPresent();
+  }
+
+  async expectCategoryBudgetDiff(categoryName, expectedDiff = this.categoryExpectedDiff) {
+    if (!categoryName) {
+      throw new Error("Expected a category name before verifying budget diff.");
+    }
+
+    if (expectedDiff === undefined || expectedDiff === null) {
+      throw new Error("Expected a computed category budget diff before verifying the list.");
+    }
+
+    const expectedDiffText = this.formatCategoryDiff(expectedDiff);
+    const row = this.elements.categoryRow(categoryName);
+
+    await expect(
+      row,
+      `Expected category "${categoryName}" to remain on the list after edit.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    await expect(
+      row,
+      `Expected planned budget to show as ${this.formatRupiah(this.categoryPlannedBudget)}.`
+    ).toContainText(this.formatRupiah(this.categoryPlannedBudget), {
+      timeout: config.defaultTimeout
+    });
+    await expect(
+      row,
+      `Expected actual cost to show as ${this.formatRupiah(this.categoryActualCost)}.`
+    ).toContainText(this.formatRupiah(this.categoryActualCost), {
+      timeout: config.defaultTimeout
+    });
+    await expect(
+      row,
+      `Expected category diff column to show "${expectedDiffText}" (planned - actual).`
+    ).toContainText(expectedDiffText, { timeout: config.defaultTimeout });
+  }
+
+  formatCategoryDiff(diffValue) {
+    const amount = Number(diffValue);
+    const formatted = this.formatRupiah(Math.abs(amount));
+    if (amount > 0) {
+      return `+${formatted}`;
+    }
+    if (amount < 0) {
+      return `-${formatted.replace(/^Rp\s?/, "Rp ")}`.replace("-Rp ", "-Rp ");
+    }
+    // amount === 0 → "+Rp 0" per UI (diff >= 0 uses leading +)
+    return `+${formatted}`;
   }
 
   async searchVendorRecommendation(vendorName) {
@@ -793,6 +992,46 @@ class ProjectPage extends BasePage {
     await expect(this.elements.selectedVendorsSidebar()).toBeVisible();
     await expect(this.elements.selectedVendorsSidebar()).toContainText(this.selectedVendorName);
     await expect(this.elements.vendorRecommendationResultRow(this.selectedVendorName)).toContainText("Selected");
+  }
+
+  /**
+   * After a vendor is selected, the Select action is replaced by a Selected badge
+   * (and the row is marked vendor-selected). The same vendor must not be selectable again.
+   */
+  async expectSelectedVendorCannotBeSelectedAgain() {
+    if (!this.selectedVendorName) {
+      throw new Error("Expected a selected vendor name before verifying re-select is blocked.");
+    }
+
+    await this.dismissVendorSelectedModalIfVisible();
+    await this.dismissVisibleModalIfPresent();
+
+    const vendorRow = this.elements.vendorRecommendationResultRow(this.selectedVendorName).first();
+
+    await expect(
+      vendorRow,
+      `Expected recommendation row for selected vendor "${this.selectedVendorName}" to stay visible.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    await expect(
+      this.elements.selectedVendorsSidebar(),
+      `Expected selected vendors sidebar to still list "${this.selectedVendorName}".`
+    ).toContainText(this.selectedVendorName, { timeout: config.defaultTimeout });
+
+    await expect(
+      this.elements.vendorRecommendationSelectedBadge(this.selectedVendorName),
+      `Expected "${this.selectedVendorName}" to show a Selected badge instead of a Select button.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    await expect(
+      this.elements.vendorRecommendationAnySelectButton(this.selectedVendorName),
+      `Expected no Select button for already selected vendor "${this.selectedVendorName}".`
+    ).toHaveCount(0);
+
+    await expect(
+      vendorRow,
+      `Expected recommendation row for "${this.selectedVendorName}" to use the vendor-selected state.`
+    ).toHaveClass(/vendor-selected/);
   }
 
   async removeSelectedVendor() {

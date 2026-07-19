@@ -7,3 +7,17 @@ Feature: Project category
   Scenario: User able to add a project category
     When I add a category with the required field
     Then I verify the category was made on the list
+
+  @destructive @category_delete
+  Scenario: User able to delete a project category
+    When I add a category with the required field
+    And I delete the created category
+    Then I verify the category has been deleted
+
+  @destructive @category_edit
+  Scenario: User able to edit category with planned budget greater than actual cost
+    When I add a category with the required field
+    And I edit the created category with planned budget "5000000" and actual cost "2000000"
+    Then I verify the category budget diff is correct
+    When I delete the created category
+    Then I verify the category has been deleted
