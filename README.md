@@ -186,17 +186,36 @@ Copy-Item config/credentials_login_invalid.example.json config/credentials_login
 
 ### CI credentials (Jenkins)
 
-Credential JSON files are **not** committed. Jenkins must supply a valid login via a **Secret file** credential:
+Credential JSON files are **not** committed. The pipeline resolves login credentials in this order:
+
+1. **Username with password** credential (default ID `fe-automation-login-valid`)
+2. **Secret file** credential (default ID `fe-valid-login-json`)
+3. Job/agent env vars `LOGIN_VALID_EMAIL` / `LOGIN_VALID_PASSWORD`
+
+IDs are pipeline parameters (`LOGIN_USERPASS_CREDENTIALS_ID`, `LOGIN_FILE_CREDENTIALS_ID`) so you can override them without changing the Jenkinsfile.
+
+#### One-time setup (recommended: Option A)
+
+In Jenkins: **Manage Jenkins → Credentials → System → Global credentials → Add Credentials**
 
 | Item | Value |
 | --- | --- |
-| Credential ID | `fe-valid-login-json` (override with `FE_LOGIN_FILE_CREDENTIALS_ID`) |
-| Type | Secret file |
-| File contents | Same shape as `config/credentials_login_valid.example.json` |
+| Kind | Username with password |
+| ID | `fe-automation-login-valid` |
+| Username | App login email |
+| Password | App login password |
 
-The pipeline copies that secret file to `config/credentials_login_valid.json`, then runs `node scripts/prepare-credentials.js` (writes missing invalid-login JSON with safe placeholders) before tests. Credential JSON is deleted in the `post` block.
+Then re-run the job. The pipeline binds these to `LOGIN_VALID_EMAIL` / `LOGIN_VALID_PASSWORD`, runs `node scripts/prepare-credentials.js`, and deletes credential JSON in `post`.
 
-Optional env fallbacks (local / alternate CI) are also accepted by `features/support/credentials.js` and `scripts/prepare-credentials.js`:
+#### Option B — Secret file
+
+| Item | Value |
+| --- | --- |
+| Kind | Secret file |
+| ID | `fe-valid-login-json` |
+| File | Same shape as `config/credentials_login_valid.example.json` |
+
+#### Option C — Environment variables
 
 | Variable | Purpose |
 | --- | --- |
@@ -206,6 +225,8 @@ Optional env fallbacks (local / alternate CI) are also accepted by `features/sup
 | `LOGIN_INVALID_PASSWORD` | Optional; defaults to `invalid-password` |
 
 Aliases `VALID_USER_EMAIL` / `VALID_USER_PASSWORD` (and the invalid counterparts) are also accepted.
+
+If none of the sources above exist, the pipeline fails early with setup instructions (instead of a bare “credentials entry not found” error).
 
 ## Project Structure
 
