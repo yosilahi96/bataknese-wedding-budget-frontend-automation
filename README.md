@@ -186,20 +186,22 @@ Copy-Item config/credentials_login_invalid.example.json config/credentials_login
 
 ### CI credentials (Jenkins)
 
-Credential JSON files are **not** committed. Jenkins must supply a valid login via a **Username with password** credential:
+Credential JSON files are **not** committed. Jenkins must supply a valid login via a **Secret file** credential:
 
 | Item | Value |
 | --- | --- |
-| Credential ID | `fe-automation-login-valid` (override with `FE_LOGIN_CREDENTIALS_ID`) |
-| Username | App login email |
-| Password | App login password |
+| Credential ID | `fe-valid-login-json` (override with `FE_LOGIN_FILE_CREDENTIALS_ID`) |
+| Type | Secret file |
+| File contents | Same shape as `config/credentials_login_valid.example.json` |
 
-The pipeline binds these to `LOGIN_VALID_EMAIL` / `LOGIN_VALID_PASSWORD`, then runs `npm run prepare:credentials` before tests.
+The pipeline copies that secret file to `config/credentials_login_valid.json`, then runs `node scripts/prepare-credentials.js` (writes missing invalid-login JSON with safe placeholders) before tests. Credential JSON is deleted in the `post` block.
+
+Optional env fallbacks (local / alternate CI) are also accepted by `features/support/credentials.js` and `scripts/prepare-credentials.js`:
 
 | Variable | Purpose |
 | --- | --- |
-| `LOGIN_VALID_EMAIL` | Valid user email (required in CI) |
-| `LOGIN_VALID_PASSWORD` | Valid user password (required in CI) |
+| `LOGIN_VALID_EMAIL` | Valid user email when JSON is absent |
+| `LOGIN_VALID_PASSWORD` | Valid user password when JSON is absent |
 | `LOGIN_INVALID_EMAIL` | Optional; defaults to `invalid@example.com` |
 | `LOGIN_INVALID_PASSWORD` | Optional; defaults to `invalid-password` |
 

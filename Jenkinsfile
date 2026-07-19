@@ -25,9 +25,9 @@ pipeline {
         SCREENSHOT = 'only-on-failure'
         VIDEO = 'off'
         TRACE = 'retain-on-failure'
-        // Jenkins "Username with password" credential ID for a valid app login.
-        // Create it under Manage Jenkins → Credentials (or folder credentials).
-        FE_LOGIN_CREDENTIALS_ID = 'fe-automation-login-valid'
+        // Jenkins "Secret file" credential containing credentials_login_valid.json.
+        // Create/update under Manage Jenkins → Credentials (or folder credentials).
+        FE_LOGIN_FILE_CREDENTIALS_ID = 'fe-valid-login-json'
     }
 
     stages {
@@ -50,14 +50,18 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    usernamePassword(
-                        credentialsId: "${env.FE_LOGIN_CREDENTIALS_ID}",
-                        usernameVariable: 'LOGIN_VALID_EMAIL',
-                        passwordVariable: 'LOGIN_VALID_PASSWORD'
+                    file(
+                        credentialsId: "${env.FE_LOGIN_FILE_CREDENTIALS_ID}",
+                        variable: 'VALID_CREDENTIALS'
                     )
                 ]) {
-                    sh 'node scripts/prepare-credentials.js'
-                    sh 'npm run test:smoke'
+                    sh '''
+                        set -e
+                        mkdir -p config
+                        cp "$VALID_CREDENTIALS" config/credentials_login_valid.json
+                        node scripts/prepare-credentials.js
+                        npm run test:smoke
+                    '''
                 }
             }
         }
@@ -68,14 +72,18 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    usernamePassword(
-                        credentialsId: "${env.FE_LOGIN_CREDENTIALS_ID}",
-                        usernameVariable: 'LOGIN_VALID_EMAIL',
-                        passwordVariable: 'LOGIN_VALID_PASSWORD'
+                    file(
+                        credentialsId: "${env.FE_LOGIN_FILE_CREDENTIALS_ID}",
+                        variable: 'VALID_CREDENTIALS'
                     )
                 ]) {
-                    sh 'node scripts/prepare-credentials.js'
-                    sh 'npm run test:ui'
+                    sh '''
+                        set -e
+                        mkdir -p config
+                        cp "$VALID_CREDENTIALS" config/credentials_login_valid.json
+                        node scripts/prepare-credentials.js
+                        npm run test:ui
+                    '''
                 }
             }
         }
@@ -96,6 +104,9 @@ pipeline {
                 alwaysLinkToLastBuild: true,
                 allowMissing: true
             ])
+
+            // Do not leave login secrets on the agent workspace.
+            sh 'rm -f config/credentials_login_valid.json config/credentials_login_invalid.json'
         }
     }
 }

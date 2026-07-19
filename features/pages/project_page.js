@@ -31,10 +31,10 @@ class ProjectPage extends BasePage {
         hasText: projectName
       }),
       deleteProjectButton: () => this.page.locator("button.btn.btn-danger.btn-sm").filter({
-        hasText: /^Delete$/i
+        hasText: /^(Delete|Hapus)$/i
       }).first(),
       confirmDeleteProjectButton: () => this.page.locator(".modal:visible button.btn.btn-danger").filter({
-        hasText: /^Delete Project$/i
+        hasText: /Delete Project|Hapus Proyek/i
       }),
       finalizeProjectButton: () => this.page.locator("button.btn.btn-primary.btn-sm").filter({
         hasText: /^Finalize$/i
@@ -394,8 +394,55 @@ class ProjectPage extends BasePage {
     await expect(this.elements.deleteProjectButton()).toBeVisible();
     await this.elements.deleteProjectButton().click();
     await expect(this.elements.confirmDeleteProjectButton()).toBeVisible();
+
+    // Wait for the project DELETE request + client navigation to overview.
+    // Do not navigate away early — that can abort the in-flight delete.
+    const deleteResponsePromise = this.page
+      .waitForResponse((response) => {
+        if (response.request().method() !== "DELETE") {
+          return false;
+        }
+
+        let pathname = "";
+        try {
+          pathname = new URL(response.url()).pathname;
+        } catch {
+          pathname = response.url();
+        }
+
+        // Match /projects/:id only (not nested category/vendor deletes).
+        const isProjectDelete = /\/projects\/[^/]+\/?$/.test(pathname);
+        return isProjectDelete && response.status() >= 200 && response.status() < 300;
+      }, { timeout: 60000 })
+      .catch(() => null);
+
     await this.elements.confirmDeleteProjectButton().click();
-    await this.waitForNetworkIdleBriefly();
+    await deleteResponsePromise;
+
+    await this.page
+      .waitForURL((url) => !/\/projects\/[^/]+/.test(url.pathname), { timeout: 60000 })
+      .catch(() => undefined);
+
+    // Overview is ready when the project list (or its empty state) is visible.
+    await expect
+      .poll(async () => {
+        const searchVisible = await this.elements.projectSearchInput().isVisible().catch(() => false);
+        if (searchVisible) {
+          return true;
+        }
+
+        const emptyVisible = await this.page
+          .locator(".card.empty-state, .empty-state")
+          .first()
+          .isVisible()
+          .catch(() => false);
+        return emptyVisible;
+      }, {
+        message: "Expected project overview after deleting the project.",
+        timeout: 60000,
+        intervals: [500, 1000, 2000]
+      })
+      .toBe(true);
   }
 
   async expectCreatedProjectNotFoundInSearch() {
@@ -410,7 +457,29 @@ class ProjectPage extends BasePage {
         waitUntil: "domcontentloaded",
         timeout: 15000
       });
+
+      // ProjectsPage shows a full-page loading state before the list/search renders.
+      await this.page
+        .locator(".loading-state")
+        .waitFor({ state: "hidden", timeout: 30000 })
+        .catch(() => undefined);
+
+      const searchVisible = await this.elements.projectSearchInput().isVisible().catch(() => false);
+      if (!searchVisible) {
+        // No projects at all → deleted project cannot be listed.
+        return 0;
+      }
+
       await this.searchProjectList(this.createdProjectSearchName);
+
+      // Prefer the exact groom & bride title to avoid partial-name false positives.
+      const exactTitleCard = this.page.locator(".card.card-hover").filter({
+        hasText: this.createdProjectTitle
+      });
+      const exactCount = await exactTitleCard.count();
+      if (exactCount > 0) {
+        return exactCount;
+      }
 
       return this.elements.projectCardByName(this.createdProjectSearchName).count();
     }, {
