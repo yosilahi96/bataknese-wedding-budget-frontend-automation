@@ -1,5 +1,6 @@
 @ui @logout
 Feature: Logout
+  @smoke
   Scenario: User able to logout
     Given I open the Bataknese wedding login page
     When I login using "credentials_login_valid.json"

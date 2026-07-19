@@ -49,6 +49,12 @@ Run only UI-tagged scenarios (`@ui`):
 npm run test:ui
 ```
 
+Run smoke scenarios only (`@smoke` — fast production-safe gate):
+
+```powershell
+npm run test:smoke
+```
+
 Run UI scenarios with a visible browser:
 
 ```powershell
@@ -73,10 +79,21 @@ Windows PowerShell helpers under `scripts/`:
 | --- | --- |
 | `scripts/run_all.ps1` | `npm test` |
 | `scripts/run_ui.ps1` | `npm run test:ui` |
+| `scripts/run_smoke.ps1` | `npm run test:smoke` |
 | `scripts/run_headed.ps1` | `npm run test:headed` |
 | `scripts/run_debug.ps1` | `npm run test:debug` |
 
 Each test run clears `reports/` and `test-results/` first (`clean:results`).
+
+### Tags
+
+| Tag | Meaning |
+| --- | --- |
+| `@ui` | Full UI regression suite (`npm run test:ui`) |
+| `@smoke` | Fast, low-risk checks: login, logout, vendor list, project pagination |
+| `@destructive` | Mutates durable data (create / delete / finalize / select vendor / add category). Prefer unique names and cleanup. |
+
+Agent-oriented conventions live in `AGENTS.md` (explore with Playwright MCP, page objects, production safety).
 
 ## Test Coverage
 
@@ -84,16 +101,17 @@ Feature files live in `features/ui/`. The UI profile in `cucumber.js` runs `feat
 
 | Feature file | Tags | Coverage |
 | --- | --- | --- |
-| `login.feature` | `@ui` `@login` | Login with valid and invalid credential files (Scenario Outline) |
-| `logout.feature` | `@ui` `@logout` | Logout from an authenticated session |
-| `vendor.feature` | `@ui` `@vendor_user` | Vendor list, vendor details, category filter, Batak specialist filter |
-| `project.feature` | `@ui` `@project` | Edit project info; delete; finalize; export budget as PDF/Excel |
-| `category.feature` | `@ui` `@project` `@category` | Add a project category |
-| `project-pagination.feature` | `@ui` `@project_pagination` | Project list pagination button states |
+| `login.feature` | `@ui` `@login` `@smoke` | Login with valid and invalid credential files (Scenario Outline) |
+| `logout.feature` | `@ui` `@logout` `@smoke` | Logout from an authenticated session |
+| `vendor.feature` | `@ui` `@vendor_user` (`@smoke` on list/details) | Vendor list, vendor details, category filter, Batak specialist filter |
+| `project.feature` | `@ui` `@project` (`@destructive` on delete/finalize) | Edit project info; delete; finalize; export budget as PDF/Excel |
+| `category.feature` | `@ui` `@project` `@category` `@destructive` | Add a project category |
+| `project-pagination.feature` | `@ui` `@project_pagination` `@smoke` | Project list pagination button states |
+| `project-type.feature` | `@ui` `@project` `@project_type` `@destructive` | Create a project with a given type |
 | `vendor-recommendation.feature` | `@ui` `@project` `@vendor_recommendation` | Search vendor recommendations |
 | `vendor-recommendation-area.feature` | `@ui` `@project` `@vendor_recommendation_filter` | Filter/sort recommendations by area, price, capacity |
 | `project-vendor-comparison.feature` | `@ui` `@project` `@vendor-comparison` | Compare up to three vendor recommendations |
-| `project-vendor-selection.feature` | `@ui` `@project` `@vendor-selection` | Select and remove a recommended vendor |
+| `project-vendor-selection.feature` | `@ui` `@project` `@vendor-selection` `@destructive` | Select and remove a recommended vendor |
 
 ## Environment Configuration
 
@@ -141,12 +159,20 @@ Given I am logged in using "credentials_login_valid.json"
 Given I am on project overview using "credentials_login_valid.json"
 ```
 
-Expected local files (create from the example; names match feature usage):
+Expected local files (copy from the committed examples; **do not commit real passwords**):
 
-- `config/credentials_login_valid.json` — valid account for authenticated scenarios
-- `config/credentials_login_invalid.json` — intentionally invalid credentials for negative login
+| Local file (gitignored) | Create from |
+| --- | --- |
+| `config/credentials_login_valid.json` | `config/credentials_login_valid.example.json` |
+| `config/credentials_login_invalid.json` | `config/credentials_login_invalid.example.json` |
 
-`config/credentials.json` is also supported as the default file name when a step does not pass a file name. That path is listed in `.gitignore`.
+```powershell
+Copy-Item config/credentials_login_valid.example.json config/credentials_login_valid.json
+Copy-Item config/credentials_login_invalid.example.json config/credentials_login_invalid.json
+# then edit the local JSON with real / intentionally invalid accounts
+```
+
+`config/credentials.json` is also supported as the default file name when a step does not pass a file name. All live credential JSON files matching `config/credentials_*.json` are gitignored (examples remain tracked).
 
 ## Project Structure
 
@@ -310,11 +336,30 @@ The `Jenkinsfile` pipeline:
 2. Uses the configured `NodeJS 20` tool.
 3. Installs dependencies with `npm ci`.
 4. Installs Chromium with `npx playwright install chromium`.
-5. Runs `npm run test:ui` with pipeline environment variables (`BASE_FE_URL`, `BROWSER`, `HEADLESS`, artifact modes).
+5. Runs either:
+   - `npm run test:smoke` when parameter / env `RUN_SMOKE_ONLY=true`, or
+   - `npm run test:ui` (default full UI suite).
 6. Archives `reports/**` and `test-results/**`.
 7. Publishes `reports/cucumber-report.html` as the Cucumber Test Report.
 
-Supply credentials and any secrets through Jenkins credentials or secure environment injection — not hard-coded in feature files or documentation.
+Supply credentials and any secrets through Jenkins credentials or secure environment injection — not hard-coded in feature files or documentation. Ensure `config/credentials_login_valid.json` and `config/credentials_login_invalid.json` exist on the agent (from secure files or generated at runtime).
+
+## GitHub Actions
+
+Workflow: `.github/workflows/automation-test.yml`
+
+| Trigger | Suite |
+| --- | --- |
+| Pull request to `main` / `master` | `npm run test:smoke` |
+| Push to `main` / `master` | `npm run test:ui` |
+| Manual `workflow_dispatch` | Choose `smoke` or `ui` |
+
+Required repository secrets:
+
+- `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` — valid test account
+- Optional: `TEST_INVALID_EMAIL` / `TEST_INVALID_PASSWORD` (defaults to invalid placeholders)
+
+Optional variable: `BASE_FE_URL`.
 
 ## Security Notes
 

@@ -1,6 +1,7 @@
 @ui @project @vendor-selection
 Feature: Project vendor selection
 
+  @destructive
   Scenario: User able to select and remove a vendor
     Given I am on the project detail page using "credentials_login_valid.json"
     When I select a vendor recommendation

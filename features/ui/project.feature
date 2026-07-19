@@ -2,20 +2,20 @@
 Feature: Project
   Background:
     Given I am logged in using "credentials_login_valid.json"
-  
+
   Scenario: User able to edit project information
     When I open an existing project detail page
     And I see edit project information
     Then I edit the project information
     And I verify the project information changes
 
-  @project_delete
+  @project_delete @destructive
   Scenario: User able to delete a created project
     When I create a project for deletion
     And I delete the created project
     Then I verify the created project is not found in the project list search
 
-  @project_finalize
+  @project_finalize @destructive
   Scenario: User able to finalize a created project
     When I create a project for finalization
     And I finalize the created project

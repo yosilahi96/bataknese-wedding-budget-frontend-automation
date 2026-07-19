@@ -1,5 +1,6 @@
 @ui @login
 Feature: Login
+  @smoke
   Scenario Outline: User login result follows the credential file
     Given I open the Bataknese wedding login page
     When I login using "<credentials>"

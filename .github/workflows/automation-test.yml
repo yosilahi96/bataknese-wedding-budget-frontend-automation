@@ -4,11 +4,28 @@ on:
   push:
     branches:
       - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Which suite to run"
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - ui
 
 jobs:
-  automation-fe:
+  smoke:
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && inputs.suite == 'smoke')
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout automation repo
         uses: actions/checkout@v4
@@ -17,25 +34,114 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install chromium --with-deps
 
-      - name: Run automation test
+      - name: Prepare local credentials from secrets
+        env:
+          VALID_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          VALID_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          INVALID_EMAIL: ${{ secrets.TEST_INVALID_EMAIL }}
+          INVALID_PASSWORD: ${{ secrets.TEST_INVALID_PASSWORD }}
+        run: |
+          if [ -z "$VALID_EMAIL" ] || [ -z "$VALID_PASSWORD" ]; then
+            echo "Missing secrets TEST_USER_EMAIL / TEST_USER_PASSWORD. Smoke tests need a real test account."
+            exit 1
+          fi
+          node -e "
+            const fs = require('fs');
+            fs.mkdirSync('config', { recursive: true });
+            fs.writeFileSync('config/credentials_login_valid.json', JSON.stringify({
+              validUser: { email: process.env.VALID_EMAIL, password: process.env.VALID_PASSWORD }
+            }, null, 2));
+            fs.writeFileSync('config/credentials_login_invalid.json', JSON.stringify({
+              validUser: {
+                email: process.env.INVALID_EMAIL || 'invalid@example.com',
+                password: process.env.INVALID_PASSWORD || 'invalid-password'
+              }
+            }, null, 2));
+          "
+
+      - name: Run smoke tests
         env:
           BASE_FE_URL: ${{ vars.BASE_FE_URL || 'https://bataknese-wedding-budget.vercel.app' }}
           DEFAULT_TIMEOUT: 90000
           HEADLESS: true
-        run: npm test
+        run: npm run test:smoke
 
-      - name: Upload automation reports
+      - name: Upload smoke reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: automation-reports
+          name: smoke-reports
+          path: |
+            reports/
+            test-results/
+          if-no-files-found: ignore
+
+  ui-full:
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.suite == 'ui')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout automation repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Prepare local credentials from secrets
+        env:
+          VALID_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          VALID_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          INVALID_EMAIL: ${{ secrets.TEST_INVALID_EMAIL }}
+          INVALID_PASSWORD: ${{ secrets.TEST_INVALID_PASSWORD }}
+        run: |
+          if [ -z "$VALID_EMAIL" ] || [ -z "$VALID_PASSWORD" ]; then
+            echo "Missing secrets TEST_USER_EMAIL / TEST_USER_PASSWORD."
+            exit 1
+          fi
+          node -e "
+            const fs = require('fs');
+            fs.mkdirSync('config', { recursive: true });
+            fs.writeFileSync('config/credentials_login_valid.json', JSON.stringify({
+              validUser: { email: process.env.VALID_EMAIL, password: process.env.VALID_PASSWORD }
+            }, null, 2));
+            fs.writeFileSync('config/credentials_login_invalid.json', JSON.stringify({
+              validUser: {
+                email: process.env.INVALID_EMAIL || 'invalid@example.com',
+                password: process.env.INVALID_PASSWORD || 'invalid-password'
+              }
+            }, null, 2));
+          "
+
+      - name: Run full UI tests
+        env:
+          BASE_FE_URL: ${{ vars.BASE_FE_URL || 'https://bataknese-wedding-budget.vercel.app' }}
+          DEFAULT_TIMEOUT: 90000
+          HEADLESS: true
+        run: npm run test:ui
+
+      - name: Upload UI reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-reports
           path: |
             reports/
             test-results/

@@ -7,6 +7,7 @@
     "clean:results": "node scripts/clean-results.js",
     "test": "npm run clean:results && cucumber-js",
     "test:ui": "npm run clean:results && cucumber-js --profile ui",
+    "test:smoke": "npm run clean:results && cucumber-js --profile smoke",
     "test:headed": "npm run clean:results && cross-env HEADLESS=false cucumber-js --profile ui",
     "test:debug": "npm run clean:results && cross-env HEADLESS=false PWDEBUG=1 cucumber-js --profile ui",
     "install:browsers": "playwright install"

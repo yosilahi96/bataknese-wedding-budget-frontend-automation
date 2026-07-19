@@ -1,6 +1,14 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(
+            name: 'RUN_SMOKE_ONLY',
+            defaultValue: false,
+            description: 'If true, run npm run test:smoke (@smoke). If false, run full npm run test:ui (@ui).'
+        )
+    }
+
     tools {
         nodejs 'NodeJS 20'
     }
@@ -33,7 +41,19 @@ pipeline {
             }
         }
 
+        stage('Run smoke tests') {
+            when {
+                expression { return params.RUN_SMOKE_ONLY == true }
+            }
+            steps {
+                sh 'npm run test:smoke'
+            }
+        }
+
         stage('Run UI tests') {
+            when {
+                expression { return params.RUN_SMOKE_ONLY != true }
+            }
             steps {
                 sh 'npm run test:ui'
             }
