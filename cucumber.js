@@ -7,7 +7,6 @@ module.exports = {
     ],
     format: [
       "progress",
-      "html:reports/cucumber-report.html",
       "json:reports/cucumber-report.json"
     ],
     formatOptions: {
@@ -22,7 +21,6 @@ module.exports = {
     ],
     format: [
       "progress",
-      "html:reports/cucumber-report.html",
       "json:reports/cucumber-report.json"
     ],
     formatOptions: {
@@ -38,7 +36,6 @@ module.exports = {
     ],
     format: [
       "progress",
-      "html:reports/cucumber-report.html",
       "json:reports/cucumber-report.json"
     ],
     formatOptions: {

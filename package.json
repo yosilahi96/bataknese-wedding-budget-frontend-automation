@@ -6,10 +6,11 @@
   "scripts": {
     "clean:results": "node scripts/clean-results.js",
     "prepare:credentials": "node scripts/prepare-credentials.js",
-    "test": "npm run clean:results && cucumber-js",
-    "test:ui": "npm run clean:results && cucumber-js --profile ui",
-    "test:smoke": "npm run clean:results && cucumber-js --profile smoke",
-    "test:headed": "npm run clean:results && cross-env HEADLESS=false cucumber-js --profile ui",
+    "report:html": "node scripts/generate-html-report.mjs",
+    "test": "npm run clean:results && cucumber-js && npm run report:html",
+    "test:ui": "npm run clean:results && cucumber-js --profile ui && npm run report:html",
+    "test:smoke": "npm run clean:results && cucumber-js --profile smoke && npm run report:html",
+    "test:headed": "npm run clean:results && cross-env HEADLESS=false cucumber-js --profile ui && npm run report:html",
     "test:debug": "npm run clean:results && cross-env HEADLESS=false PWDEBUG=1 cucumber-js --profile ui",
     "install:browsers": "playwright install"
   },
@@ -23,8 +24,9 @@
   "license": "ISC",
   "devDependencies": {
     "@cucumber/cucumber": "^10.9.0",
-    "@playwright/test": "^1.45.3",
+    "@playwright/test": "^1.61.1",
     "cross-env": "^7.0.3",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.6.1",
+    "multiple-cucumber-html-reporter": "^4.1.0"
   }
 }
