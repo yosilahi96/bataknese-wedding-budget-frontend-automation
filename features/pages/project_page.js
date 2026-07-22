@@ -169,7 +169,14 @@ class ProjectPage extends BasePage {
         has: this.page.getByText(/^TOTAL$/i)
       }).first(),
       previousPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Previous$/i }),
-      nextPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Next$/i })
+      nextPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Next$/i }),
+      budgetOverviewCard: () => this.page.locator(".card.fade-in").filter({ has: this.page.getByText(/Budget Overview/i) }).first(),
+      budgetOverviewSubCard: (typePattern) => this.page.locator(".sub-card").filter({
+        has: this.page.locator("span").filter({ hasText: typePattern }).first()
+      }).first(),
+      projectListCards: () => this.page.locator('a[href*="/projects/"]'),
+      projectCardBudget: (cardLocator) => cardLocator.locator(".currency").first(),
+      projectCardPercentUsed: (cardLocator) => cardLocator.locator(".currency").last()
     };
   }
 
@@ -2012,6 +2019,92 @@ class ProjectPage extends BasePage {
     }
 
     return entries;
+  }
+
+  async getBudgetOverviewTypePlannedSpent(typePattern) {
+    await expect(
+      this.elements.budgetOverviewCard(),
+      "Expected Budget Overview card to be visible."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const subCard = this.elements.budgetOverviewSubCard(typePattern);
+    await expect(subCard, `Expected budget overview sub-card for "${typePattern}".`).toBeVisible({
+      timeout: config.defaultTimeout
+    });
+
+    const currencyValues = await subCard.locator(".currency").allInnerTexts();
+    return {
+      planned: this.parseRupiahToNumber(currencyValues[0]),
+      spent: this.parseRupiahToNumber(currencyValues[1])
+    };
+  }
+
+  async expectBudgetOverviewTotalsCorrectForType(typePattern, typeText) {
+    const overview = await this.getBudgetOverviewTypePlannedSpent(typePattern);
+
+    let apiPayload = null;
+    const responsePromise = this.page.waitForResponse(
+      resp => resp.url().includes("/api/projects") && resp.status() === 200,
+      { timeout: 10000 }
+    );
+
+    await this.page.reload();
+    const apiResponse = await responsePromise;
+    apiPayload = await apiResponse.json();
+
+    if (!apiPayload || !Array.isArray(apiPayload.projects)) {
+      throw new Error("Failed to extract project data from /api/projects.");
+    }
+
+    const projects = apiPayload.projects.filter(p => {
+      const displayType = p.eventType === "PESTA_ADAT" ? "Pesta Adat" : "3M Ceremony";
+      return displayType === typeText;
+    });
+
+    const totalPlanned = projects.reduce((sum, p) => {
+      if (!p.events) return sum;
+      for (const event of p.events) {
+        if (!event.categories) continue;
+        for (const cat of event.categories) {
+          sum += Number(cat.plannedBudget) || 0;
+        }
+      }
+      return sum;
+    }, 0);
+
+    let totalSpent = 0;
+    for (const p of projects) {
+      if (p.events) {
+        for (const event of p.events) {
+          if (event.categories) {
+            for (const cat of event.categories) {
+              totalSpent += Number(cat.actualCost) || 0;
+            }
+          }
+        }
+      }
+    }
+
+    expect(
+      overview.planned,
+      `Budget overview Planned (${this.formatRupiah(overview.planned)}) should equal sum of all ${typeText} project budgets (${this.formatRupiah(totalPlanned)}).`
+    ).toBe(totalPlanned);
+
+    expect(
+      overview.spent,
+      `Budget overview Spent (${this.formatRupiah(overview.spent)}) should equal sum of all ${typeText} category actual costs (${this.formatRupiah(totalSpent)}).`
+    ).toBe(totalSpent);
+  }
+
+  async navigateToProjectPage(pageNumber) {
+    const pageButton = this.page.locator("div.pagination-actions button").filter({
+      hasText: new RegExp(`^${pageNumber}$`)
+    });
+
+    if (await pageButton.isVisible().catch(() => false)) {
+      await pageButton.click();
+      await this.waitForNetworkIdleBriefly();
+    }
   }
 
   async goToLatestPage() {

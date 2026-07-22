@@ -300,3 +300,19 @@ When("I export the project budget as {string}", async function (exportType) {
 Then("I verify the downloaded {string} budget file is correct", async function (exportType) {
   await this.projectPage.expectBudgetExportCorrect(exportType);
 });
+
+Given("I am on the project overview page", async function () {
+  await this.dashboardPage.expectDashboardVisible();
+});
+
+When("I view the budget overview for {string}", async function (typeName) {
+  this.budgetOverviewType = typeName;
+  await this.projectPage.getBudgetOverviewTypePlannedSpent(new RegExp(typeName, "i"));
+});
+
+Then("the total planned and spent in the budget overview for {string} should match the sum of all {string} project budgets", async function (typePattern, typeText) {
+  await this.projectPage.expectBudgetOverviewTotalsCorrectForType(
+    new RegExp(typePattern, "i"),
+    typeText
+  );
+});
