@@ -7,7 +7,8 @@ module.exports = {
     ],
     format: [
       "progress",
-      "json:reports/cucumber-report.json"
+      "json:reports/cucumber-report.json",
+      "html:reports/cucumber-report.html"
     ],
     formatOptions: {
       snippetInterface: "synchronous"
@@ -21,7 +22,8 @@ module.exports = {
     ],
     format: [
       "progress",
-      "json:reports/cucumber-report.json"
+      "json:reports/cucumber-report.json",
+      "html:reports/cucumber-report.html"
     ],
     formatOptions: {
       snippetInterface: "synchronous"
@@ -36,7 +38,8 @@ module.exports = {
     ],
     format: [
       "progress",
-      "json:reports/cucumber-report.json"
+      "json:reports/cucumber-report.json",
+      "html:reports/cucumber-report.html"
     ],
     formatOptions: {
       snippetInterface: "synchronous"

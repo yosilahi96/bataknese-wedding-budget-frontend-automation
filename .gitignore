@@ -6,6 +6,7 @@ playwright-report/
 *.log
 mpc-prompt.md
 .commandcode/
+.playwright-mcp/
 inspect_page.js
 
 # Local credentials — never commit real accounts
