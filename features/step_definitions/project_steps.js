@@ -118,6 +118,35 @@ Then("I verify the category budget diff is correct", async function () {
   await this.projectPage.expectCategoryBudgetDiff(this.categoryName);
 });
 
+When(
+  "I edit the created category with planned budget {string} and over-budget actual cost {string}",
+  async function (plannedBudget, actualCost) {
+    if (!this.categoryName) {
+      throw new Error(
+        'Expected a category from "I add a category with the required field" before editing.'
+      );
+    }
+    await this.projectPage.editCategoryBudgetsOverBudget(
+      this.categoryName,
+      plannedBudget,
+      actualCost
+    );
+  }
+);
+
+Then("I verify the category budget diff is negative", async function () {
+  if (!this.categoryName) {
+    throw new Error("Expected a category name before verifying budget diff.");
+  }
+  if (this.projectPage.categoryExpectedDiff === undefined || this.projectPage.categoryExpectedDiff >= 0) {
+    throw new Error(
+      `Expected a negative budget diff, but got ${this.projectPage.categoryExpectedDiff}. ` +
+      "Use the over-budget edit step first."
+    );
+  }
+  await this.projectPage.expectCategoryBudgetDiff(this.categoryName);
+});
+
 When("I search vendor recommendation {string}", async function (vendorName) {
   this.vendorRecommendationName = vendorName;
   await this.projectPage.searchVendorRecommendation(vendorName);

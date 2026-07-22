@@ -711,6 +711,74 @@ class ProjectPage extends BasePage {
     await this.dismissVisibleModalIfPresent();
   }
 
+  /**
+   * Edit an existing category so actual cost exceeds planned budget (over-budget).
+   * Diff on the list will be negative (shown with a leading -).
+   */
+  async editCategoryBudgetsOverBudget(categoryName, plannedBudget, actualCost) {
+    if (!categoryName) {
+      throw new Error("Expected a category name before editing it.");
+    }
+
+    const planned = Number(String(plannedBudget).replace(/\D/g, ""));
+    const actual = Number(String(actualCost).replace(/\D/g, ""));
+
+    if (!Number.isFinite(planned) || !Number.isFinite(actual)) {
+      throw new Error(`Invalid budget values planned="${plannedBudget}" actual="${actualCost}".`);
+    }
+
+    if (actual <= planned) {
+      throw new Error(
+        `This scenario requires actual cost > planned budget. Received planned=${planned}, actual=${actual}.`
+      );
+    }
+
+    this.categoryPlannedBudget = planned;
+    this.categoryActualCost = actual;
+    this.categoryExpectedDiff = planned - actual; // Negative when over budget
+
+    await expect(
+      this.elements.categoryRow(categoryName),
+      `Expected category "${categoryName}" to be visible before editing.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const editButton = this.elements
+      .categoryRow(categoryName)
+      .locator('button[title="Edit"], button[title="Ubah"]')
+      .first();
+    await expect(
+      editButton,
+      `Expected an Edit action on the category row for "${categoryName}".`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await editButton.click();
+
+    await expect(
+      this.elements.editCategoryModal(),
+      "Expected the edit category modal to open."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.editCategoryPlannedBudgetInput()).toBeVisible({
+      timeout: config.defaultTimeout
+    });
+    await expect(this.elements.editCategoryActualCostInput()).toBeVisible({
+      timeout: config.defaultTimeout
+    });
+
+    await this.elements.editCategoryPlannedBudgetInput().fill(String(planned));
+    await this.elements.editCategoryActualCostInput().fill(String(actual));
+    await expect(this.elements.saveEditCategoryButton()).toBeVisible();
+    await this.elements.saveEditCategoryButton().click();
+
+    const updatedModal = this.elements.categoryUpdatedModal();
+    await expect(
+      updatedModal,
+      "Expected Category Updated confirmation after saving the category."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.categoryUpdatedOkButton()).toBeVisible();
+    await this.elements.categoryUpdatedOkButton().click();
+    await expect(updatedModal).toBeHidden({ timeout: config.defaultTimeout });
+    await this.dismissVisibleModalIfPresent();
+  }
+
   async expectCategoryBudgetDiff(categoryName, expectedDiff = this.categoryExpectedDiff) {
     if (!categoryName) {
       throw new Error("Expected a category name before verifying budget diff.");
@@ -753,7 +821,8 @@ class ProjectPage extends BasePage {
       return `+${formatted}`;
     }
     if (amount < 0) {
-      return `-${formatted.replace(/^Rp\s?/, "Rp ")}`.replace("-Rp ", "-Rp ");
+      // UI shows "Rp -3.000.000" (minus after Rp)
+      return `Rp -${this.formatRupiah(Math.abs(amount)).replace(/^Rp\s?/, "").trim()}`;
     }
     // amount === 0 → "+Rp 0" per UI (diff >= 0 uses leading +)
     return `+${formatted}`;

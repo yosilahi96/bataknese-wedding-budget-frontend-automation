@@ -92,6 +92,14 @@ Each test run clears `reports/` and `test-results/` first (`clean:results`).
 | `@ui` | Full UI regression suite (`npm run test:ui`) |
 | `@smoke` | Fast, low-risk checks: login, logout, vendor list, project pagination |
 | `@destructive` | Mutates durable data (create / delete / finalize / select vendor / add category). Prefer unique names and cleanup. |
+| `@login`, `@logout` | Login and logout scenarios |
+| `@vendor_user`, `@vendor_filter`, `@vendor_batak_specialist_filter` | Vendor directory, category filter, Batak specialist filter |
+| `@project`, `@project_pagination`, `@project_type` | Project CRUD, pagination, type creation |
+| `@project_delete`, `@project_finalize`, `@project_export` | Project deletion, finalization, budget export |
+| `@category`, `@category_delete`, `@category_edit`, `@category_over_budget` | Category add, delete, edit, and over-budget diff |
+| `@vendor_recommendation`, `@vendor_recommendation_filter` | Vendor recommendation search and filter/sort |
+| `@vendor-comparison` | Vendor comparison |
+| `@vendor-selection`, `@vendor_reselect` | Vendor selection and reselect guard |
 
 Agent-oriented conventions live in `AGENTS.md` (explore with Playwright MCP, page objects, production safety).
 
@@ -103,15 +111,15 @@ Feature files live in `features/ui/`. The UI profile in `cucumber.js` runs `feat
 | --- | --- | --- |
 | `login.feature` | `@ui` `@login` `@smoke` | Login with valid and invalid credential files (Scenario Outline) |
 | `logout.feature` | `@ui` `@logout` `@smoke` | Logout from an authenticated session |
-| `vendor.feature` | `@ui` `@vendor_user` (`@smoke` on list/details) | Vendor list, vendor details, category filter, Batak specialist filter |
-| `project.feature` | `@ui` `@project` (`@destructive` on delete/finalize) | Edit project info; delete; finalize; export budget as PDF/Excel |
-| `category.feature` | `@ui` `@project` `@category` `@destructive` | Add a project category |
+| `vendor.feature` | `@ui` `@vendor_user` (`@smoke` on list/details, `@vendor_filter`, `@vendor_batak_specialist_filter`) | Vendor list, vendor details, category filter (venue/catering/gondang), Batak specialist filter |
+| `project.feature` | `@ui` `@project` (`@project_delete`, `@project_finalize`, `@project_export`) | Edit project info; delete; finalize; export budget as PDF/Excel |
+| `category.feature` | `@ui` `@project` `@category` (`@category_delete`, `@category_edit`, `@category_over_budget`) | Add, delete, and edit categories with budget diff verification; over-budget negative diff |
 | `project-pagination.feature` | `@ui` `@project_pagination` `@smoke` | Project list pagination button states |
 | `project-type.feature` | `@ui` `@project` `@project_type` `@destructive` | Create a project with a given type |
 | `vendor-recommendation.feature` | `@ui` `@project` `@vendor_recommendation` | Search vendor recommendations |
 | `vendor-recommendation-area.feature` | `@ui` `@project` `@vendor_recommendation_filter` | Filter/sort recommendations by area, price, capacity |
 | `project-vendor-comparison.feature` | `@ui` `@project` `@vendor-comparison` | Compare up to three vendor recommendations |
-| `project-vendor-selection.feature` | `@ui` `@project` `@vendor-selection` `@destructive` | Select and remove a recommended vendor |
+| `project-vendor-selection.feature` | `@ui` `@project` `@vendor-selection` `@destructive` (`@vendor_reselect`) | Select and remove a recommended vendor; reselect guard |
 
 ## Environment Configuration
 
@@ -182,7 +190,7 @@ Copy-Item config/credentials_login_invalid.example.json config/credentials_login
 # then edit the local JSON with real / intentionally invalid accounts
 ```
 
-`config/credentials.json` is also supported as the default file name when a step does not pass a file name. All live credential JSON files matching `config/credentials_*.json` are gitignored (examples remain tracked).
+All live credential JSON files matching `config/credentials_*.json` are gitignored (examples remain tracked).
 
 ### CI credentials (Jenkins)
 
@@ -334,6 +342,8 @@ Each page class exposes semantic methods and an `elements` object with Playwrigh
 - `When I open an existing project detail page`
 - `Then I edit the project information`
 - `Then I verify the project information changes`
+- `When I create a project with type {string}`
+- `Then I verify the project type is {string}`
 - `When I create a project for deletion`
 - `When I delete the created project`
 - `Then I verify the created project is not found in the project list search`
@@ -342,6 +352,12 @@ Each page class exposes semantic methods and an `elements` object with Playwrigh
 - `Then I verify the created project status is finalized in the project list search`
 - `When I add a category with the required field`
 - `Then I verify the category was made on the list`
+- `When I delete the created category`
+- `Then I verify the category has been deleted`
+- `When I edit the created category with planned budget {string} and actual cost {string}`
+- `When I edit the created category with planned budget {string} and over-budget actual cost {string}`
+- `Then I verify the category budget diff is correct`
+- `Then I verify the category budget diff is negative`
 - `When I search vendor recommendation {string}`
 - `Then I verify the vendor recommendation search result matched`
 - `When I choose {int} vendor recommendations to compare`
@@ -366,6 +382,7 @@ Each page class exposes semantic methods and an `elements` object with Playwrigh
 - `Then I verify vendor recommendation capacity filter result matched for {string}`
 - `When I select a vendor recommendation`
 - `Then I verify the vendor has been selected`
+- `Then I verify the selected vendor cannot be selected again`
 - `When I remove the selected vendor`
 - `Then I verify the selected vendor has been removed`
 - `When I export the project budget as {string}`

@@ -21,3 +21,11 @@ Feature: Project category
     Then I verify the category budget diff is correct
     When I delete the created category
     Then I verify the category has been deleted
+
+  @destructive @category_over_budget
+  Scenario: User able to edit category with actual cost exceeding planned budget
+    When I add a category with the required field
+    And I edit the created category with planned budget "2000000" and over-budget actual cost "5000000"
+    Then I verify the category budget diff is negative
+    When I delete the created category
+    Then I verify the category has been deleted
