@@ -29,3 +29,14 @@ Feature: Project category
     Then I verify the category budget diff is negative
     When I delete the created category
     Then I verify the category has been deleted
+
+  @destructive @category_budget_remaining
+  Scenario: Remaining amount is total budget minus total spent after editing categories
+    When I add category "Venue" with planned budget "30000000"
+    And I add category "Decoration" with planned budget "20000000"
+    And I edit category "Venue" with planned budget "30000000" and actual cost "25000000"
+    Then the remaining amount should equal total budget minus total spent
+    And I edit category "Decoration" with planned budget "20000000" and actual cost "15000000"
+    Then the remaining amount should equal total budget minus total spent
+    And I delete the category named "Decoration"
+    And I delete the category named "Venue"

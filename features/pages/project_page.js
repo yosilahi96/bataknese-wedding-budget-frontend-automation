@@ -158,6 +158,10 @@ class ProjectPage extends BasePage {
         .locator('.card, .card-hover, [class*="card"]')
         .filter({ has: this.page.getByText(/^In Progress$/i) })
         .first(),
+      statCard: (labelPattern) => this.page.locator(".stat-card").filter({
+        has: this.page.locator(".stat-label", { hasText: labelPattern })
+      }).first(),
+      statCardValue: (labelPattern) => this.elements.statCard(labelPattern).locator(".stat-value").first(),
       previousPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Previous$/i }),
       nextPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Next$/i })
     };
@@ -964,6 +968,88 @@ class ProjectPage extends BasePage {
 
   formatRupiah(value) {
     return `Rp ${Number(value).toLocaleString("id-ID")}`;
+  }
+
+  parseRupiahToNumber(rupiahText) {
+    return Number(String(rupiahText).replace(/[^\d-]/g, ""));
+  }
+
+  async getStatCardValue(labelPattern) {
+    await expect(this.elements.statCardValue(labelPattern)).toBeVisible({ timeout: config.defaultTimeout });
+    const rawText = await this.elements.statCardValue(labelPattern).innerText();
+    return this.parseRupiahToNumber(rawText);
+  }
+
+  async expectRemainingAmountCorrect() {
+    const totalBudget = await this.getStatCardValue(/total budget/i);
+    const totalSpent = await this.getStatCardValue(/total spent/i);
+    const remaining = await this.getStatCardValue(/remaining/i);
+    const expectedRemaining = totalBudget - totalSpent;
+
+    expect(
+      remaining,
+      `Expected Remaining (${this.formatRupiah(remaining)}) to equal Total Budget (${this.formatRupiah(totalBudget)}) - Total Spent (${this.formatRupiah(totalSpent)}) = ${this.formatRupiah(expectedRemaining)}`
+    ).toBe(expectedRemaining);
+  }
+
+  async addCategoryWithBudget(categoryName, plannedBudget) {
+    await this.addRequiredCategory(categoryName, plannedBudget);
+  }
+
+  async editCategoryBudgetsByName(categoryName, plannedBudget, actualCost) {
+    if (!categoryName) {
+      throw new Error("Expected a category name before editing it.");
+    }
+
+    const planned = Number(String(plannedBudget).replace(/\D/g, ""));
+    const actual = Number(String(actualCost).replace(/\D/g, ""));
+
+    if (!Number.isFinite(planned) || !Number.isFinite(actual)) {
+      throw new Error(`Invalid budget values planned="${plannedBudget}" actual="${actualCost}".`);
+    }
+
+    await expect(
+      this.elements.categoryRow(categoryName),
+      `Expected category "${categoryName}" to be visible before editing.`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const editButton = this.elements
+      .categoryRow(categoryName)
+      .locator('button[title="Edit"], button[title="Ubah"]')
+      .first();
+    await expect(
+      editButton,
+      `Expected an Edit action on the category row for "${categoryName}".`
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await editButton.click();
+
+    await expect(
+      this.elements.editCategoryModal(),
+      "Expected the edit category modal to open."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    // Fill planned budget input
+    const plannedInput = this.elements.editCategoryPlannedBudgetInput();
+    await expect(plannedInput).toBeVisible({ timeout: config.defaultTimeout });
+    await plannedInput.fill(String(planned));
+
+    // Fill actual cost input
+    const actualInput = this.elements.editCategoryActualCostInput();
+    await expect(actualInput).toBeVisible({ timeout: config.defaultTimeout });
+    await actualInput.fill(String(actual));
+
+    await expect(this.elements.saveEditCategoryButton()).toBeVisible();
+    await this.elements.saveEditCategoryButton().click();
+
+    const updatedModal = this.elements.categoryUpdatedModal();
+    await expect(
+      updatedModal,
+      "Expected Category Updated confirmation after saving the category."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+    await expect(this.elements.categoryUpdatedOkButton()).toBeVisible();
+    await this.elements.categoryUpdatedOkButton().click();
+    await expect(updatedModal).toBeHidden({ timeout: config.defaultTimeout });
+    await this.dismissVisibleModalIfPresent();
   }
 
   async selectFirstAvailableVendorRecommendation() {

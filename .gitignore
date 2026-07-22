@@ -5,6 +5,8 @@ test-results/
 playwright-report/
 *.log
 mpc-prompt.md
+.commandcode/
+inspect_page.js
 
 # Local credentials — never commit real accounts
 config/credentials.json

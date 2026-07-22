@@ -147,6 +147,39 @@ Then("I verify the category budget diff is negative", async function () {
   await this.projectPage.expectCategoryBudgetDiff(this.categoryName);
 });
 
+Then("the remaining amount should equal total budget minus total spent", async function () {
+  await this.projectPage.expectRemainingAmountCorrect();
+});
+
+When("I delete the category named {string}", async function (categoryName) {
+  const savedName = this.savedCategoryNames?.[categoryName] || categoryName;
+  await this.projectPage.deleteCategory(savedName);
+  delete this.savedCategoryNames?.[categoryName];
+});
+
+When(
+  "I add category {string} with planned budget {string}",
+  async function (categoryName, plannedBudget) {
+    const uniqueName = `${categoryName} ${Date.now()}`;
+    this.savedCategoryNames = this.savedCategoryNames || {};
+    this.savedCategoryNames[categoryName] = uniqueName;
+    this.savedCategoryName = uniqueName;
+    await this.projectPage.addCategoryWithBudget(uniqueName, plannedBudget);
+  }
+);
+
+When(
+  "I edit category {string} with planned budget {string} and actual cost {string}",
+  async function (categoryName, plannedBudget, actualCost) {
+    const savedName = this.savedCategoryNames?.[categoryName] || this.savedCategoryName || categoryName;
+    await this.projectPage.editCategoryBudgetsByName(
+      savedName,
+      plannedBudget,
+      actualCost
+    );
+  }
+);
+
 When("I search vendor recommendation {string}", async function (vendorName) {
   this.vendorRecommendationName = vendorName;
   await this.projectPage.searchVendorRecommendation(vendorName);

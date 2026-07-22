@@ -96,7 +96,7 @@ Each test run clears `reports/` and `test-results/` first (`clean:results`).
 | `@vendor_user`, `@vendor_filter`, `@vendor_batak_specialist_filter` | Vendor directory, category filter, Batak specialist filter |
 | `@project`, `@project_pagination`, `@project_type` | Project CRUD, pagination, type creation |
 | `@project_delete`, `@project_finalize`, `@project_export` | Project deletion, finalization, budget export |
-| `@category`, `@category_delete`, `@category_edit`, `@category_over_budget` | Category add, delete, edit, and over-budget diff |
+| `@category`, `@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining` | Category add, delete, edit, over-budget diff, and remaining budget |
 | `@vendor_recommendation`, `@vendor_recommendation_filter` | Vendor recommendation search and filter/sort |
 | `@vendor-comparison` | Vendor comparison |
 | `@vendor-selection`, `@vendor_reselect` | Vendor selection and reselect guard |
@@ -113,7 +113,7 @@ Feature files live in `features/ui/`. The UI profile in `cucumber.js` runs `feat
 | `logout.feature` | `@ui` `@logout` `@smoke` | Logout from an authenticated session |
 | `vendor.feature` | `@ui` `@vendor_user` (`@smoke` on list/details, `@vendor_filter`, `@vendor_batak_specialist_filter`) | Vendor list, vendor details, category filter (venue/catering/gondang), Batak specialist filter |
 | `project.feature` | `@ui` `@project` (`@project_delete`, `@project_finalize`, `@project_export`) | Edit project info; delete; finalize; export budget as PDF/Excel |
-| `category.feature` | `@ui` `@project` `@category` (`@category_delete`, `@category_edit`, `@category_over_budget`) | Add, delete, and edit categories with budget diff verification; over-budget negative diff |
+| `category.feature` | `@ui` `@project` `@category` (`@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining`) | Add, delete, and edit categories with budget diff verification; over-budget negative diff; remaining budget calculation |
 | `project-pagination.feature` | `@ui` `@project_pagination` `@smoke` | Project list pagination button states |
 | `project-type.feature` | `@ui` `@project` `@project_type` `@destructive` | Create a project with a given type |
 | `vendor-recommendation.feature` | `@ui` `@project` `@vendor_recommendation` | Search vendor recommendations |
@@ -356,8 +356,12 @@ Each page class exposes semantic methods and an `elements` object with Playwrigh
 - `Then I verify the category has been deleted`
 - `When I edit the created category with planned budget {string} and actual cost {string}`
 - `When I edit the created category with planned budget {string} and over-budget actual cost {string}`
+- `When I add category {string} with planned budget {string}`
+- `When I edit category {string} with planned budget {string} and actual cost {string}`
 - `Then I verify the category budget diff is correct`
 - `Then I verify the category budget diff is negative`
+- `Then the remaining amount should equal total budget minus total spent`
+- `When I delete the category named {string}`
 - `When I search vendor recommendation {string}`
 - `Then I verify the vendor recommendation search result matched`
 - `When I choose {int} vendor recommendations to compare`
