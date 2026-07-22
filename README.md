@@ -98,6 +98,7 @@ Each test run clears `reports/` and `test-results/` first (`clean:results`).
 | `@project_delete`, `@project_finalize`, `@project_export` | Project deletion, finalization, budget export |
 | `@category`, `@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining` | Category add, delete, edit, over-budget diff, and remaining budget |
 | `@vendor_recommendation`, `@vendor_recommendation_filter` | Vendor recommendation search and filter/sort |
+| `@budget_overview` | Budget overview totals verification |
 | `@vendor-comparison` | Vendor comparison |
 | `@vendor-selection`, `@vendor_reselect` | Vendor selection and reselect guard |
 
@@ -114,6 +115,7 @@ Feature files live in `features/ui/`. The UI profile in `cucumber.js` runs `feat
 | `vendor.feature` | `@ui` `@vendor_user` (`@smoke` on list/details, `@vendor_filter`, `@vendor_batak_specialist_filter`) | Vendor list, vendor details, category filter (venue/catering/gondang), Batak specialist filter |
 | `project.feature` | `@ui` `@project` (`@project_delete`, `@project_finalize`, `@project_export`) | Edit project info; delete; finalize; export budget as PDF/Excel |
 | `category.feature` | `@ui` `@project` `@category` (`@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining`) | Add, delete, and edit categories with budget diff verification; over-budget negative diff; remaining budget calculation |
+| `budget-overview.feature` | `@ui` `@project` `@budget_overview` | Budget overview totals match sum of project budgets per type |
 | `project-pagination.feature` | `@ui` `@project_pagination` `@smoke` | Project list pagination button states |
 | `project-type.feature` | `@ui` `@project` `@project_type` `@destructive` | Create a project with a given type |
 | `vendor-recommendation.feature` | `@ui` `@project` `@vendor_recommendation` | Search vendor recommendations |
