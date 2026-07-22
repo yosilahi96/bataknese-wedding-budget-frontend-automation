@@ -151,6 +151,10 @@ Then("the remaining amount should equal total budget minus total spent", async f
   await this.projectPage.expectRemainingAmountCorrect();
 });
 
+Then("I verify the total planned and actual price is calculated correctly", async function () {
+  await this.projectPage.expectPlannedAndActualTotalsCorrect();
+});
+
 When("I delete the category named {string}", async function (categoryName) {
   const savedName = this.savedCategoryNames?.[categoryName] || categoryName;
   await this.projectPage.deleteCategory(savedName);

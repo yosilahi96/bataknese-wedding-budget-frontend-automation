@@ -162,6 +162,12 @@ class ProjectPage extends BasePage {
         has: this.page.locator(".stat-label", { hasText: labelPattern })
       }).first(),
       statCardValue: (labelPattern) => this.elements.statCard(labelPattern).locator(".stat-value").first(),
+      projectTypeBudgetStatCard: () => this.page.locator(".stat-card").filter({
+        hasText: /of Rp [\d.,]+ planned/i
+      }).first(),
+      categoryTotalRow: () => this.elements.categoryTableCard().locator("tbody tr").filter({
+        has: this.page.getByText(/^TOTAL$/i)
+      }).first(),
       previousPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Previous$/i }),
       nextPageButton: () => this.page.locator("div.pagination-actions button").filter({ hasText: /^Next$/i })
     };
@@ -990,6 +996,97 @@ class ProjectPage extends BasePage {
       remaining,
       `Expected Remaining (${this.formatRupiah(remaining)}) to equal Total Budget (${this.formatRupiah(totalBudget)}) - Total Spent (${this.formatRupiah(totalSpent)}) = ${this.formatRupiah(expectedRemaining)}`
     ).toBe(expectedRemaining);
+  }
+
+  async getCategoryTotals() {
+    await expect(
+      this.elements.categoryTableCard(),
+      "Expected the categories table before reading planned/actual totals."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const rowBudgets = await this.elements.categoryTableCard().locator("tbody tr").evaluateAll((rows) =>
+      rows
+        .filter((row) => !/^\s*total\s*$/i.test(row.querySelector("td")?.innerText || ""))
+        .map((row) => {
+          const cells = row.querySelectorAll("td");
+
+          return {
+            planned: cells[1]?.innerText || "0",
+            actual: cells[2]?.innerText || "0"
+          };
+        })
+    );
+
+    return rowBudgets.reduce((totals, row) => ({
+      totalPlanned: totals.totalPlanned + this.parseRupiahToNumber(row.planned),
+      totalActual: totals.totalActual + this.parseRupiahToNumber(row.actual)
+    }), { totalPlanned: 0, totalActual: 0 });
+  }
+
+  /**
+   * The project type stat card shows "Rp <actual> of Rp <planned> planned (<pct>%)".
+   * Actual/planned must equal the sums of the categories table, pct = actual / planned.
+   * TOTAL SPENT must equal the sum of category actual costs.
+   */
+  async expectPlannedAndActualTotalsCorrect() {
+    const { totalPlanned, totalActual } = await this.getCategoryTotals();
+
+    const totalRow = this.elements.categoryTotalRow();
+    await expect(
+      totalRow,
+      "Expected a TOTAL row summarizing planned/actual in the categories table."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const totalRowCells = await totalRow.locator("td").allInnerTexts();
+    const totalRowPlanned = this.parseRupiahToNumber(totalRowCells[1]);
+    const totalRowActual = this.parseRupiahToNumber(totalRowCells[2]);
+
+    expect(
+      totalRowPlanned,
+      `Expected TOTAL row planned (${this.formatRupiah(totalRowPlanned)}) to equal sum of category planned budgets (${this.formatRupiah(totalPlanned)}).`
+    ).toBe(totalPlanned);
+    expect(
+      totalRowActual,
+      `Expected TOTAL row actual (${this.formatRupiah(totalRowActual)}) to equal sum of category actuals (${this.formatRupiah(totalActual)}).`
+    ).toBe(totalActual);
+
+    const typeCard = this.elements.projectTypeBudgetStatCard();
+    await expect(
+      typeCard,
+      "Expected the project type stat card showing actual vs planned totals."
+    ).toBeVisible({ timeout: config.defaultTimeout });
+
+    const typeCardText = await typeCard.innerText();
+    const plannedMatch = typeCardText.match(/of\s+(Rp\s?[\d.,]+)\s+planned/i);
+    const percentMatch = typeCardText.match(/\((\d+(?:\.\d+)?)\s*%\)/);
+
+    if (!plannedMatch || !percentMatch) {
+      throw new Error(`Expected project type stat card to show "of Rp ... planned (...%)" but got "${typeCardText}".`);
+    }
+
+    const cardActual = this.parseRupiahToNumber(await typeCard.locator(".stat-value").first().innerText());
+    const cardPlanned = this.parseRupiahToNumber(plannedMatch[1]);
+    const cardPercent = Number(percentMatch[1]);
+    const expectedPercent = totalPlanned > 0 ? Number(((totalActual / totalPlanned) * 100).toFixed(1)) : 0;
+
+    expect(
+      cardActual,
+      `Expected type card actual (${this.formatRupiah(cardActual)}) to equal sum of category actuals (${this.formatRupiah(totalActual)}).`
+    ).toBe(totalActual);
+    expect(
+      cardPlanned,
+      `Expected type card planned (${this.formatRupiah(cardPlanned)}) to equal sum of category planned budgets (${this.formatRupiah(totalPlanned)}).`
+    ).toBe(totalPlanned);
+    expect(
+      cardPercent,
+      `Expected type card percent (${cardPercent}%) to equal actual/planned (${expectedPercent}%).`
+    ).toBe(expectedPercent);
+
+    const totalSpent = await this.getStatCardValue(/total spent/i);
+    expect(
+      totalSpent,
+      `Expected TOTAL SPENT (${this.formatRupiah(totalSpent)}) to equal sum of category actuals (${this.formatRupiah(totalActual)}).`
+    ).toBe(totalActual);
   }
 
   async addCategoryWithBudget(categoryName, plannedBudget) {

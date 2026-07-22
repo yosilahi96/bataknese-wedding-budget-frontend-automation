@@ -30,6 +30,13 @@ Feature: Project category
     When I delete the created category
     Then I verify the category has been deleted
 
+  @destructive @category_totals
+  Scenario: User able to verify total planned and actual price after editing a category
+    When I add category "Catering" with planned budget "10000000"
+    And I edit category "Catering" with planned budget "10000000" and actual cost "4000000"
+    Then I verify the total planned and actual price is calculated correctly
+    And I delete the category named "Catering"
+
   @destructive @category_budget_remaining
   Scenario: Remaining amount is total budget minus total spent after editing categories
     When I add category "Venue" with planned budget "30000000"
