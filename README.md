@@ -96,7 +96,7 @@ Each test run clears `reports/` and `test-results/` first (`clean:results`).
 | `@vendor_user`, `@vendor_filter`, `@vendor_batak_specialist_filter` | Vendor directory, category filter, Batak specialist filter |
 | `@project`, `@project_pagination`, `@project_type` | Project CRUD, pagination, type creation |
 | `@project_delete`, `@project_finalize`, `@project_export` | Project deletion, finalization, budget export |
-| `@category`, `@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining` | Category add, delete, edit, over-budget diff, and remaining budget |
+| `@category`, `@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining`, `@category_totals` | Category add, delete, edit, over-budget diff, remaining budget, and total planned/actual price |
 | `@vendor_recommendation`, `@vendor_recommendation_filter` | Vendor recommendation search and filter/sort |
 | `@budget_overview` | Budget overview totals verification |
 | `@vendor-comparison` | Vendor comparison |
@@ -114,7 +114,7 @@ Feature files live in `features/ui/`. The UI profile in `cucumber.js` runs `feat
 | `logout.feature` | `@ui` `@logout` `@smoke` | Logout from an authenticated session |
 | `vendor.feature` | `@ui` `@vendor_user` (`@smoke` on list/details, `@vendor_filter`, `@vendor_batak_specialist_filter`) | Vendor list, vendor details, category filter (venue/catering/gondang), Batak specialist filter |
 | `project.feature` | `@ui` `@project` (`@project_delete`, `@project_finalize`, `@project_export`) | Edit project info; delete; finalize; export budget as PDF/Excel |
-| `category.feature` | `@ui` `@project` `@category` (`@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining`) | Add, delete, and edit categories with budget diff verification; over-budget negative diff; remaining budget calculation |
+| `category.feature` | `@ui` `@project` `@category` (`@category_delete`, `@category_edit`, `@category_over_budget`, `@category_budget_remaining`, `@category_totals`) | Add, delete, and edit categories with budget diff verification; over-budget negative diff; remaining budget calculation; total planned/actual price |
 | `budget-overview.feature` | `@ui` `@project` `@budget_overview` | Budget overview totals match sum of project budgets per type |
 | `project-pagination.feature` | `@ui` `@project_pagination` `@smoke` | Project list pagination button states |
 | `project-type.feature` | `@ui` `@project` `@project_type` `@destructive` | Create a project with a given type |
@@ -363,6 +363,7 @@ Each page class exposes semantic methods and an `elements` object with Playwrigh
 - `Then I verify the category budget diff is correct`
 - `Then I verify the category budget diff is negative`
 - `Then the remaining amount should equal total budget minus total spent`
+- `Then I verify the total planned and actual price is calculated correctly`
 - `When I delete the category named {string}`
 - `When I search vendor recommendation {string}`
 - `Then I verify the vendor recommendation search result matched`
@@ -393,6 +394,9 @@ Each page class exposes semantic methods and an `elements` object with Playwrigh
 - `Then I verify the selected vendor has been removed`
 - `When I export the project budget as {string}`
 - `Then I verify the downloaded {string} budget file is correct`
+- `Given I am on the project overview page`
+- `When I view the budget overview for {string}`
+- `Then the total planned and spent in the budget overview for {string} should match the sum of all {string} project budgets`
 
 ## Reports and Artifacts
 
