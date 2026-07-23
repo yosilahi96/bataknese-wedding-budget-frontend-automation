@@ -101,6 +101,7 @@ Each test run clears `reports/` and `test-results/` first (`clean:results`).
 | `@budget_overview` | Budget overview totals verification |
 | `@vendor-comparison` | Vendor comparison |
 | `@vendor-selection`, `@vendor_reselect` | Vendor selection and reselect guard |
+| `@language` | Language switch (EN/ID) |
 
 Agent-oriented conventions live in `AGENTS.md` (explore with Playwright MCP, page objects, production safety).
 
@@ -122,6 +123,7 @@ Feature files live in `features/ui/`. The UI profile in `cucumber.js` runs `feat
 | `vendor-recommendation-area.feature` | `@ui` `@project` `@vendor_recommendation_filter` | Filter/sort recommendations by area, price, capacity |
 | `project-vendor-comparison.feature` | `@ui` `@project` `@vendor-comparison` | Compare up to three vendor recommendations |
 | `project-vendor-selection.feature` | `@ui` `@project` `@vendor-selection` `@destructive` (`@vendor_reselect`) | Select and remove a recommended vendor; reselect guard |
+| `language-switch.feature` | `@ui` `@language` (`@smoke`) | Switch language to Indonesian and verify translated UI content |
 
 ## Environment Configuration
 
@@ -299,6 +301,11 @@ Each page class exposes semantic methods and an `elements` object with Playwrigh
 - `Then the page url should contain {string}`
 - `Then the page should contain {string}`
 - `Then the page should not contain {string}`
+
+### Language (`language_steps.js`)
+
+- `When I switch the language to {string}`
+- `Then I should see the page in {string} language`
 
 ### Login / session (`login_steps.js`)
 

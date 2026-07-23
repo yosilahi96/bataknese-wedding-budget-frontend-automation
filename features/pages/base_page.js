@@ -3,6 +3,11 @@ const { expect } = require("@playwright/test");
 class BasePage {
   constructor(page) {
     this.page = page;
+
+    this.elements = {
+      languageSelect: () =>
+        this.page.locator(".language-select select"),
+    };
   }
 
   async goto(url) {
@@ -39,6 +44,17 @@ class BasePage {
     const element = this.page.getByLabel(label);
     await expect(element).toBeVisible();
     await element.selectOption(value);
+  }
+
+  async switchLanguage(languageCode) {
+    const select = this.elements.languageSelect();
+    await expect(select).toBeVisible();
+    await select.selectOption(languageCode);
+  }
+
+  async expectLanguageOptionSelected(languageCode) {
+    const select = this.elements.languageSelect();
+    await expect(select).toHaveValue(languageCode);
   }
 
   async checkByLabel(label) {
